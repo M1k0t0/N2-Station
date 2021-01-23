@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 
 node_modules/
+frontend/assets/css/
+frontend/assets/js/

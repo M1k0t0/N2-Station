@@ -1,55 +1,168 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="assets/css/starter.css">
-    <title>Bootstrap npm starter</title>
-  </head>
-  <body>
-    <div class="col-md-8 mx-auto">
-      <h1>Hello, world!</h1>
-      <p>You've successfully loaded up the Bootstrap npm starter project!</p>
-      <p>If this button looks blue and the text purple, you've done it.</p>
-      <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">Click me!</button>
 
-      <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalLabel">Success!</h5>
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-            <div class="modal-body">
-              If you're seeing this modal after clicking the button on the page, Bootstrap's CSS and JS are both working properly.
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-primary">Save changes</button>
-            </div>
-          </div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="assets/css/starter.css">
+  <title>N2-Station</title>
+  <style>
+    /* to center the text... */
+    .bd-placeholder-img {
+      font-size: 1.125rem;
+      text-anchor: middle;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      user-select: none;
+    }
+
+    @media (min-width: 768px) {
+      .bd-placeholder-img-lg {
+        font-size: 3.5rem;
+      }
+    }
+
+    /* -----
+    SVG Icons - svgicons.sparkk.fr
+    ----- */
+
+    .svg-icon {
+      width: 1em;
+      height: 1em;
+    }
+
+    .svg-icon path,
+    .svg-icon polygon,
+    .svg-icon rect {
+      fill: #4691f6;
+    }
+
+    .svg-icon circle {
+      stroke: #4691f6;
+      stroke-width: 1;
+    }
+
+    html,
+    body {
+      overflow-x: hidden;
+      /* Prevent scroll on narrow devices */
+    }
+
+    body {
+      padding-top: 56px;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark" aria-label="Main navigation">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">N2-Station</a>
+      <button class="navbar-toggler p-0 border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbar"
+        aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="navbar-collapse offcanvas-collapse collapse" id="navbar">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item active">
+            <a class="nav-link" aria-current="page" href="#">直播间列表</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">管理直播间</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">设置</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">登出</a>
+          </li>
+        </ul>
+        <form class="d-flex">
+          <input class="form-control me-2" type="search" placeholder="你今天吃了没？" aria-label="search">
+          <button class="btn" type="submit"><svg class="svg-icon" viewBox="0 0 20 20">
+              <path
+                d="M18.125,15.804l-4.038-4.037c0.675-1.079,1.012-2.308,1.01-3.534C15.089,4.62,12.199,1.75,8.584,1.75C4.815,1.75,1.982,4.726,2,8.286c0.021,3.577,2.908,6.549,6.578,6.549c1.241,0,2.417-0.347,3.44-0.985l4.032,4.026c0.167,0.166,0.43,0.166,0.596,0l1.479-1.478C18.292,16.234,18.292,15.968,18.125,15.804 M8.578,13.99c-3.198,0-5.716-2.593-5.733-5.71c-0.017-3.084,2.438-5.686,5.74-5.686c3.197,0,5.625,2.493,5.64,5.624C14.242,11.548,11.621,13.99,8.578,13.99 M16.349,16.981l-3.637-3.635c0.131-0.11,0.721-0.695,0.876-0.884l3.642,3.639L16.349,16.981z">
+              </path>
+            </svg></button>
+        </form>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Basically copied from the album sample -->
+  <template id="video-cell">
+    <div class="col">
+      <div class="card shadow-sm">
+        <img src="assets/imgs/test.jpg">
+
+        <div class="card-body pt-2 pb-2">
+          <p class="card-text video-description mb-0">Description</p>
+          <section>
+            <span class="badge rounded-pill bg-secondary">Waifu</span>
+            <span class="badge rounded-pill bg-secondary">Moe</span>
+          </section>
         </div>
       </div>
+    </div>
+  </template>
 
-      <hr class="my-5">
+  <main>
+    <section class="py-5 text-center container">
+      <div class="row align-items-center">
+        <div id="featured-description" class="col-sm-7">
+          <h2>
+            Featuring: Bernie Sanders
+          </h2>
+          <p>
+            <blockquote>
+              I was just sitting there trying to keep warm"
+            </blockquote>
+            - Bernie Sanders
+          </p>
+        </div>
+        <div id="featured" class="carousel slide col-sm-5" data-ride="carousel">
+          <div class="carousel-inner">
+            <div class="carousel-item active">
+              <img class="d-block w-100" src="assets/imgs/sanders.jpg" alt="Sanders">
+            </div>
+          </div>
+          <a class="carousel-control-prev" href="#carouselExampleControls" role="button" data-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+          </a>
+          <a class="carousel-control-next" href="#carouselExampleControls" role="button" data-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+          </a>
+        </div>
+      </div>
+    </section>
 
-      <h2>Adding Bootstrap Icons</h2>
-      <p><a href="https://icons.getbootstrap.com">Bootstrap Icons</a> are included with the SVG sprite here, but there are other <a href="https://icons.getbootstrap.com/#usage">usage options</a>, too. They're styleable with text utilities and more.</p>
-
-      <svg class="bi text-danger" width="32" height="32">
-        <use xlink:href="node_modules/bootstrap-icons/bootstrap-icons.svg#heart-fill"/>
-      </svg>
-      <svg class="bi text-dark" width="32" height="32">
-        <use xlink:href="node_modules/bootstrap-icons/bootstrap-icons.svg#toggles"/>
-      </svg>
-      <svg class="bi text-primary" width="32" height="32">
-        <use xlink:href="node_modules/bootstrap-icons/bootstrap-icons.svg#shop"/>
-      </svg>
+    <div class="album py-5 bg-light">
+      <div class="container">
+        <h1>Recommendations for weebs!</h1>
+        <div id="videos" class="row row-cols-1 row-cols-sm-3 row-cols-md-5 g-5">
+        </div>
+      </div>
     </div>
 
-    <script src="node_modules/jquery/dist/jquery.slim.min.js"></script>
-    <script type="module" src="assets/js/starter.js"></script>
-  </body>
+  </main>
+
+  <script src="node_modules/jquery/dist/jquery.slim.min.js"></script>
+  <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function addVid(name, description) {
+      let vid = document.getElementById('video-cell').content.cloneNode(true);
+      let descriptionNode = vid.querySelector('.video-description');
+      descriptionNode.textContent = description;
+      let videos = document.getElementById('videos');
+      videos.appendChild(vid);
+    }
+
+    // test...
+    for (let i = 0; i < 10; i++) {
+      addVid(`Video ${i}`, `Video ${i} description...`);
+    }
+  </script>
+</body>
+
 </html>

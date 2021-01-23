@@ -14,7 +14,7 @@ DB_ADDRESS="mongodb://localhost:27017/"
 
 try:
     db = process.connect_server(DB_ADDRESS)
-except BaseException as e:
+except BaseException as e:    # Not work, solve WIP
     print(e)
     os._exit(0)
 
@@ -95,15 +95,14 @@ def verify():
         
     if method=='':
         return jsonify(utils.simple_reply("verify",-10)), 403
-    print(method,data)
+
     user=users.find_one({method:data})
     if user != None:
         if user["pass"]==utils.md5(utils.md5(request.values.get("pass"))):
             return jsonify(utils.simple_reply("verify",0))
-        else:
-            return jsonify(utils.simple_reply("verify",-1)), 403
+    return jsonify(utils.simple_reply("verify",-1)), 403
 
 
 if __name__ == '__main__':
     app.debug = False
-    app.run()
+    app.run(host="0.0.0.0", port=8443)

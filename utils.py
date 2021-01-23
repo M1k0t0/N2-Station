@@ -1,4 +1,4 @@
-import os, uuid, hashlib
+import os, uuid, hashlib, time
 
 code2type=["INFO","WARN","ERROR","UNDEFINED"]
 

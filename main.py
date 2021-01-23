@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import pymongo, os, sys, time, utils, process
 
 app = Flask(__name__)
@@ -44,17 +44,65 @@ def getUserList():
         cache["userList"]={}
         for i in users.find():
             cache["userList"][str(i["_id"])]={ "id": str(i["_id"]), "name": i["name"], "email": i["email"] }
-    return jsonify(cache["userList"])
+    return jsonify({ "data": cache["userList"], "action": "getUserList" })
 
 @app.route('/api/user/debug/<func>')
 def debug(func):
     if func=="addUser":
         try:
             global cache
-            utils.add_test_user_to_db(db,{},cache)
+            process.add_user_to_db(db,{},cache)
         except BaseException as e:
             return str(e)
         return "0"
+
+@app.route('/api/auth/register', methods=["POST"])
+def register():
+    email=request.values.get("email")
+    username=request.values.get("user")
+    password=request.values.get("pass")
+    if email==None or username==None or password==None:
+        return jsonify(utils.simple_reply("register", -10))
+    try:
+        global cache
+        data, code=process.add_user_to_db(db,{"email": email, "user": username, "pass": password, "rooms": [], "limit": { "room_count":5 }},cache)
+    except BaseException:
+        return jsonify(utils.simple_reply("register",-4))
+    if code<0:
+        return jsonify(utils.simple_reply("register",data))
+    return jsonify({ "action": "register", "status": "0", "token": "", "id": data })    # Token WIP
+    
+    
+@app.route('/api/auth/verify', methods=["POST"])
+def verify():
+    method=''
+    data=''
+    
+    email=request.values.get("email") 
+    if email != None:
+        data=request.values.get("email") 
+        method='email'
+    
+    username=request.values.get("user")
+    if username != None:
+        method='user'
+        data=username
+    
+    id=request.values.get("id")
+    if id != None:
+        method='id'
+        data=id
+        
+    if method=='':
+        return jsonify(utils.simple_reply("verify",-10)), 403
+    print(method,data)
+    user=users.find_one({method:data})
+    if user != None:
+        if user["pass"]==utils.md5(utils.md5(request.values.get("pass"))):
+            return jsonify(utils.simple_reply("verify",0))
+        else:
+            return jsonify(utils.simple_reply("verify",-1)), 403
+
 
 if __name__ == '__main__':
     app.debug = False

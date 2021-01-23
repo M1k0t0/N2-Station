@@ -30,7 +30,7 @@ def index():
 {
 	"id": "uuid",
         "name": "username",
-        "pass": "md5(this.name+md5(password))",
+        "pass": "utils.get_hashed_password(password)",
         "email":"email",
         "rooms": [],
         "limit": {
@@ -98,7 +98,7 @@ def verify():
 
     user=users.find_one({method:data})
     if user != None:
-        if user["pass"]==utils.md5(utils.md5(request.values.get("pass"))):
+        if utils.check_password(user["pass"],request.values.get("pass")):
             return jsonify(utils.simple_reply("verify",0))
     return jsonify(utils.simple_reply("verify",-1)), 403
 

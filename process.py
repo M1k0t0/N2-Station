@@ -26,7 +26,7 @@ def add_user_to_db(db, data, cache):
     if "user" not in data:
         data["name"]=str(uuid.uuid4())[0:8]
     if "pass" not in data:
-        data["pass"]=md5(data["name"]+md5(str(uuid.uuid4())[0:9]))
+        data["pass"]=utils.get_hashed_password(str(uuid.uuid4())[0:9])
     if "email" not in data:
         data["email"]="random@debug.dev"
     if "rooms" not in data:
@@ -42,7 +42,7 @@ def add_user_to_db(db, data, cache):
     #if 密码强度不合格:   WIP
         #return -3
         
-    data["pass"]=utils.md5(utils.md5(data["pass"]))
+    data["pass"]=utils.get_hashed_password(data["pass"])
     
     db["users"].insert_one(data)
     if "userList" not in cache:

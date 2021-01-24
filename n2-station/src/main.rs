@@ -12,7 +12,7 @@ mod backend;
 #[derive(FromArgs)]
 #[argh(description = "N2Station Backend Startup Parameter")]
 struct Param {
-    #[argh(option, description = "database server port", default = "3306")]
+    #[argh(option, description = "database server port", default = "8848")]
     server_port: u16,
 }
 
@@ -50,7 +50,7 @@ async fn initialize_database(pool: &MySqlPool) -> Result<()> {
     query!(
         r#"
         CREATE TABLE IF NOT EXISTS `users`(
-            `uuid` BINARY(16) NOT NULL,
+            `uuid` CHAR(32) NOT NULL,
             `username` VARCHAR(16) NOT NULL,
             `email` VARCHAR(30) NOT NULL,
             `passwd` BINARY(60) NOT NULL,
@@ -64,12 +64,13 @@ async fn initialize_database(pool: &MySqlPool) -> Result<()> {
     query!(
         r#"
         CREATE TABLE IF NOT EXISTS `rooms`(
-            `owner_uuid` BINARY(16) NOT NULL,
+            `owner_uuid` CHAR(32) NOT NULL,
             `stream_id` VARCHAR(16) NOT NULL,
             `title` VARCHAR(16) NOT NULL,
             `desc` VARCHAR(20) NOT NULL,
             `tag` VARCHAR(1024) NULL,
-            `open` BOOL NOT NULL
+            `open` BOOL NOT NULL,
+            `stream_token` CHAR(32) NULL
         )
         "#
     )
@@ -80,8 +81,8 @@ async fn initialize_database(pool: &MySqlPool) -> Result<()> {
         r#"
         CREATE TABLE IF NOT EXISTS `tags`(
             `id` INT UNSIGNED AUTO_INCREMENT,
-            `type` VARCHAR(10) NOT NULL,
-            `creator_uuid` BINARY(16) NOT NULL,
+            `tag_type` VARCHAR(10) NOT NULL,
+            `creator_uuid` CHAR(32) NOT NULL,
             PRIMARY KEY ( id )
         )
         "#

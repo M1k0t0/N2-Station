@@ -1,54 +1,110 @@
-use super::form;
+//!TODO: more appropriate error handling
+//!TODO: more elegant tag system
+
+use super::{form, handler, Action};
 use actix_identity::Identity;
-use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::{get, post, web, HttpResponse};
 use form::{ChangePassword, LoginInfo, RegInfo};
+use handler::set_room_status;
 use sqlx::MySqlPool;
+use uuid::Uuid;
 
 #[get("/api/info/room")]
-async fn get_room_list(db_pool: web::Data<MySqlPool>) -> impl Responder {
-    ""
+async fn get_room_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
+    let result = handler::get_all_rooms(db_pool.get_ref()).await;
+    if let Ok(rooms) = result {
+        HttpResponse::Ok().json(Action::GetRoomList(rooms))
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[post("/api/info/room")]
 async fn get_room_detail(
     db_pool: web::Data<MySqlPool>,
     room: web::Form<form::RoomInfo>,
-) -> impl Responder {
-    ""
+) -> HttpResponse {
+    let result = handler::search_room_by_stream_name(db_pool.get_ref(), room.id.clone()).await;
+    if let Ok(room) = result {
+        HttpResponse::Ok().json(Action::SearchRoom(room))
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[get("/api/info/tag")]
-async fn get_tag_list(db_pool: web::Data<MySqlPool>) -> impl Responder {
-    ""
+async fn get_tag_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
+    let result = handler::get_all_tags(db_pool.get_ref()).await;
+    if let Ok(tags) = result {
+        HttpResponse::Ok().json(Action::GetTagList(tags))
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[post("/api/info/tag")]
 async fn get_tag_detail(
     db_pool: web::Data<MySqlPool>,
     tag: web::Form<form::TagInfo>,
-) -> impl Responder {
-    ""
+) -> HttpResponse {
+    let result = if !tag.id.is_none() {
+        handler::search_tag_by_id(db_pool.get_ref(), tag.id.unwrap()).await
+    } else if !tag.tag_type.is_empty() {
+        handler::search_tag_by_type(db_pool.get_ref(), tag.tag_type.clone()).await
+    } else {
+        Ok(None)
+    };
+    if let Ok(tag) = result {
+        HttpResponse::Ok().json(Action::SearchTag(tag))
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[get("/api/info/user")]
-async fn get_user_list(db_pool: web::Data<MySqlPool>) -> impl Responder {
-    ""
+async fn get_user_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
+    let result = handler::get_all_users(db_pool.get_ref()).await;
+    if let Ok(users) = result {
+        HttpResponse::Ok().json(Action::GetUserList(users))
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[post("/api/info/user")]
 async fn get_user_detail(
     db_pool: web::Data<MySqlPool>,
     user: web::Form<form::UserInfo>,
-) -> impl Responder {
-    ""
+) -> HttpResponse {
+    let result = if !user.id.is_empty() {
+        if let Ok(uuid) = Uuid::parse_str(user.id.as_str()) {
+            handler::search_user_by_uuid(db_pool.get_ref(), uuid).await
+        } else {
+            return HttpResponse::BadRequest().finish();
+        }
+    } else if !user.name.is_empty() {
+        handler::search_user_by_name(db_pool.get_ref(), user.name.clone()).await
+    } else {
+        Ok(None)
+    };
+    if let Ok(user) = result {
+        HttpResponse::Ok().json(Action::SearchUser(user))
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[get("/api/user/room")]
 async fn get_user_rooms(db_pool: web::Data<MySqlPool>, id: Identity) -> HttpResponse {
-    if id.identity().is_none() {
-        return HttpResponse::Forbidden().finish();
+    if let Some(uuid) = id.identity() {
+        let result = handler::search_rooms_by_owner(db_pool.get_ref(), uuid).await;
+        if let Ok(rooms) = result {
+            HttpResponse::Ok().json(Action::GetUserRoomList(rooms))
+        } else {
+            HttpResponse::InternalServerError().finish()
+        }
     } else {
-        return HttpResponse::Found().finish();
+        HttpResponse::Forbidden().finish()
     }
 }
 
@@ -58,10 +114,28 @@ async fn create_tag(
     id: Identity,
     creation: web::Form<form::TagCreation>,
 ) -> HttpResponse {
-    if id.identity().is_none() {
-        return HttpResponse::Forbidden().finish();
+    if let Some(uuid) = id.identity() {
+        if creation.tag_type.is_empty() || creation.tag_type.len() > 10 {
+            HttpResponse::Ok().json(Action::CreateTag { status: -10 })
+        } else {
+            if handler::search_tag_by_type(db_pool.get_ref(), creation.tag_type.clone())
+                .await
+                .unwrap()
+                .is_some()
+            {
+                HttpResponse::Ok().json(Action::CreateTag { status: -1 })
+            } else {
+                if let Ok(_) =
+                    handler::create_tag(db_pool.get_ref(), creation.tag_type.clone(), uuid).await
+                {
+                    HttpResponse::Ok().json(Action::CreateTag { status: 0 })
+                } else {
+                    HttpResponse::Ok().json(Action::CreateTag { status: -2 })
+                }
+            }
+        }
     } else {
-        return HttpResponse::Found().finish();
+        HttpResponse::Forbidden().finish()
     }
 }
 
@@ -69,12 +143,40 @@ async fn create_tag(
 async fn create_room(
     db_pool: web::Data<MySqlPool>,
     id: Identity,
-    room: web::Form<form::RoomId>,
+    room: web::Form<form::RoomCreation>,
 ) -> HttpResponse {
-    if id.identity().is_none() {
-        return HttpResponse::Forbidden().finish();
+    if let Some(uuid) = id.identity() {
+        //TODO: check ';' in tags
+        if room.id.is_empty()
+            || room.title.is_empty()
+            || room.desc.is_empty()
+            || room.id.len() > 16
+            || room.title.len() > 16
+            || room.desc.len() > 20
+        {
+            HttpResponse::Ok().json(Action::CreateRoom { status: -10 })
+        } else {
+            if handler::exists_room(db_pool.get_ref(), room.id.clone()).await {
+                HttpResponse::Ok().json(Action::CreateRoom { status: -1 })
+            } else {
+                if let Ok(_) = handler::create_room(
+                    db_pool.get_ref(),
+                    uuid,
+                    room.id.clone(),
+                    room.title.clone(),
+                    room.desc.clone(),
+                    room.tag.clone(),
+                )
+                .await
+                {
+                    HttpResponse::Ok().json(Action::CreateRoom { status: 0 })
+                } else {
+                    HttpResponse::InternalServerError().finish()
+                }
+            }
+        }
     } else {
-        return HttpResponse::Found().finish();
+        HttpResponse::Forbidden().finish()
     }
 }
 
@@ -85,9 +187,21 @@ async fn delete_room(
     room: web::Form<form::RoomId>,
 ) -> HttpResponse {
     if id.identity().is_none() {
-        return HttpResponse::Forbidden().finish();
+        HttpResponse::Forbidden().finish()
     } else {
-        return HttpResponse::Found().finish();
+        if room.id.is_empty() {
+            HttpResponse::Ok().json(Action::DeleteRoom { status: -10 })
+        } else {
+            if let Ok(affected) = handler::delete_room(db_pool.get_ref(), room.id.clone()).await {
+                if affected > 0 {
+                    HttpResponse::Ok().json(Action::DeleteRoom { status: 0 })
+                } else {
+                    HttpResponse::Ok().json(Action::DeleteRoom { status: -1 })
+                }
+            } else {
+                HttpResponse::InternalServerError().finish()
+            }
+        }
     }
 }
 
@@ -97,10 +211,25 @@ async fn open_room(
     id: Identity,
     room: web::Form<form::RoomId>,
 ) -> HttpResponse {
+    //TODO: check open limit
     if id.identity().is_none() {
-        return HttpResponse::Forbidden().finish();
+        HttpResponse::Forbidden().finish()
     } else {
-        return HttpResponse::Found().finish();
+        if room.id.is_empty() {
+            HttpResponse::Ok().json(Action::OpenRoom { status: -10 })
+        } else {
+            if let Ok(affected) =
+                handler::set_room_status(db_pool.get_ref(), room.id.clone(), true).await
+            {
+                if affected > 0 {
+                    HttpResponse::Ok().json(Action::OpenRoom { status: 0 })
+                } else {
+                    HttpResponse::Ok().json(Action::OpenRoom { status: -1 })
+                }
+            } else {
+                HttpResponse::InternalServerError().finish()
+            }
+        }
     }
 }
 
@@ -111,9 +240,23 @@ async fn close_room(
     room: web::Form<form::RoomId>,
 ) -> HttpResponse {
     if id.identity().is_none() {
-        return HttpResponse::Forbidden().finish();
+        HttpResponse::Forbidden().finish()
     } else {
-        return HttpResponse::Found().finish();
+        if room.id.is_empty() {
+            HttpResponse::Ok().json(Action::CloseRoom { status: -10 })
+        } else {
+            if let Ok(affected) =
+                handler::set_room_status(db_pool.get_ref(), room.id.clone(), false).await
+            {
+                if affected > 0 {
+                    HttpResponse::Ok().json(Action::CloseRoom { status: 0 })
+                } else {
+                    HttpResponse::Ok().json(Action::CloseRoom { status: -1 })
+                }
+            } else {
+                HttpResponse::InternalServerError().finish()
+            }
+        }
     }
 }
 
@@ -123,16 +266,40 @@ async fn edit_room(
     id: Identity,
     room: web::Form<form::RoomEdition>,
 ) -> HttpResponse {
+    //not implemented yet
     if id.identity().is_none() {
-        return HttpResponse::Forbidden().finish();
+        HttpResponse::Forbidden().finish()
     } else {
-        return HttpResponse::Found().finish();
+        HttpResponse::NoContent().finish()
     }
 }
 
 #[post("/api/auth/register")]
-async fn register(db_pool: web::Data<MySqlPool>, user: web::Form<RegInfo>) -> impl Responder {
-    ""
+async fn register(db_pool: web::Data<MySqlPool>, user: web::Form<RegInfo>) -> HttpResponse {
+    if user.email.is_empty()
+        || user.pass.is_empty()
+        || user.user.is_empty()
+        || user.user.len() > 16
+        || user.email.len() > 30
+        || user.pass.len() > 16
+    {
+        HttpResponse::Ok().json(Action::Register {
+            status: -10,
+            id: Uuid::nil(),
+        })
+    } else {
+        if handler::exists_user(db_pool.get_ref(), user.user.clone(), user.email.clone()).await {
+            HttpResponse::Ok().json(Action::Register {
+                status: -1,
+                id: Uuid::nil(),
+            })
+        } else {
+            HttpResponse::Ok().json(Action::Register {
+                status: 0,
+                id: Uuid::nil(),
+            })
+        }
+    }
 }
 
 #[post("/api/auth/getToken")]
@@ -140,16 +307,16 @@ async fn login(
     db_pool: web::Data<MySqlPool>,
     id: Identity,
     user: web::Form<LoginInfo>,
-) -> impl Responder {
+) -> HttpResponse {
     //verify
     id.remember(String::from("uuid"));
     ""
 }
 
 #[get("/api/auth/destroyToken")]
-async fn logout(db_pool: web::Data<MySqlPool>, id: Identity) -> impl Responder {
+async fn logout(id: Identity) -> HttpResponse {
     id.forget();
-    ""
+    HttpResponse::Ok().json(Action::DestroyToken { status: 0 })
 }
 
 #[post("/api/auth/changePassword")]
@@ -157,7 +324,12 @@ async fn change_password(
     db_pool: web::Data<MySqlPool>,
     id: Identity,
     user: web::Form<ChangePassword>,
-) -> impl Responder {
+) -> HttpResponse {
+    ""
+}
+
+#[get("/callback/nginx")]
+async fn nginx_callback(db_pool: web::Data<MySqlPool>, data: web::Form<()>) -> HttpResponse {
     ""
 }
 
@@ -178,5 +350,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
         .service(register)
         .service(login)
         .service(logout)
-        .service(change_password);
+        .service(change_password)
+        .service(nginx_callback);
 }

@@ -57,8 +57,6 @@ pub mod form {
     #[serde(default)]
     pub struct LoginInfo {
         pub email: String,
-        pub user: String,
-        pub uuid: String,
         pub key: String,
     }
 
@@ -201,6 +199,18 @@ pub mod response {
                 user: raw.into(),
             })
         }
+
+        pub fn is_open(&self) -> bool {
+            self.open != 0
+        }
+
+        pub fn token_match(&self, token: &Uuid) -> bool {
+            if let Some(ref stream_token) = self.stream_token {
+                stream_token.eq(&token.to_simple().to_string())
+            } else {
+                false
+            }
+        }
     }
 
     impl RawUser {
@@ -236,6 +246,7 @@ pub mod response {
 pub mod handler {
     use super::response::{BakedRoom, BakedTag, BakedUser, RawRoom, RawTag, RawUser};
     use anyhow::Result;
+    use bcrypt::{hash, verify, DEFAULT_COST};
     use futures::{stream, StreamExt};
     use sqlx::{query, query_as, Done, MySqlPool};
     use uuid::Uuid;
@@ -269,17 +280,24 @@ pub mod handler {
         .await)
     }
 
-    pub async fn search_room_by_stream_name(
+    pub async fn raw_room_by_stream_name(
         db_pool: &MySqlPool,
         stream_name: String,
-    ) -> Result<Option<BakedRoom>> {
-        let query = query_as!(
+    ) -> Result<Option<RawRoom>> {
+        Ok(query_as!(
             RawRoom,
             r#"SELECT * FROM rooms WHERE stream_id = ?"#,
             stream_name
         )
         .fetch_optional(db_pool)
-        .await?;
+        .await?)
+    }
+
+    pub async fn search_room_by_stream_name(
+        db_pool: &MySqlPool,
+        stream_name: String,
+    ) -> Result<Option<BakedRoom>> {
+        let query = raw_room_by_stream_name(db_pool, stream_name).await?;
         if let Some(raw) = query {
             Ok(Some(raw.bake(db_pool).await?))
         } else {
@@ -435,5 +453,47 @@ pub mod handler {
         .execute(db_pool)
         .await?
         .rows_affected())
+    }
+
+    pub async fn create_user(
+        db_pool: &MySqlPool,
+        name: String,
+        email: String,
+        pass: String,
+    ) -> Result<Uuid> {
+        let uuid = Uuid::new_v4();
+        let uuid_str = uuid.to_simple().to_string();
+        let pass_str = hash(pass, DEFAULT_COST)?;
+        let pass = pass_str.as_bytes();
+        let _ = query!(
+            r#"INSERT INTO users (uuid, username, email, passwd) VALUES(?, ?, ?, ?)"#,
+            uuid_str,
+            name,
+            email,
+            pass
+        )
+        .execute(db_pool)
+        .await?;
+        Ok(uuid)
+    }
+
+    pub async fn check_password(
+        db_pool: &MySqlPool,
+        email: String,
+        pass: String,
+    ) -> Result<Option<Uuid>> {
+        let raw = query_as!(RawUser, r#"SELECT * FROM users WHERE email = ?"#, email)
+            .fetch_optional(db_pool)
+            .await?;
+        if let Some(raw) = raw {
+            let real = String::from_utf8(raw.passwd)?;
+            if verify(pass, &real)? {
+                Ok(Some(Uuid::parse_str(&raw.uuid)?))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
     }
 }

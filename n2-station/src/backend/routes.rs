@@ -5,7 +5,6 @@ use super::{form, handler, Action};
 use actix_identity::Identity;
 use actix_web::{get, post, web, HttpResponse};
 use form::{ChangePassword, LoginInfo, RegInfo};
-use handler::set_room_status;
 use sqlx::MySqlPool;
 use uuid::Uuid;
 
@@ -212,6 +211,7 @@ async fn open_room(
     room: web::Form<form::RoomId>,
 ) -> HttpResponse {
     //TODO: check open limit
+    //TODO: response with stream token
     if id.identity().is_none() {
         HttpResponse::Forbidden().finish()
     } else {
@@ -262,9 +262,9 @@ async fn close_room(
 
 #[post("/api/user/editRoom")]
 async fn edit_room(
-    db_pool: web::Data<MySqlPool>,
+    _db_pool: web::Data<MySqlPool>,
     id: Identity,
-    room: web::Form<form::RoomEdition>,
+    _room: web::Form<form::RoomEdition>,
 ) -> HttpResponse {
     //not implemented yet
     if id.identity().is_none() {
@@ -294,10 +294,21 @@ async fn register(db_pool: web::Data<MySqlPool>, user: web::Form<RegInfo>) -> Ht
                 id: Uuid::nil(),
             })
         } else {
-            HttpResponse::Ok().json(Action::Register {
-                status: 0,
-                id: Uuid::nil(),
-            })
+            if let Ok(uuid) = handler::create_user(
+                db_pool.get_ref(),
+                user.user.clone(),
+                user.email.clone(),
+                user.pass.clone(),
+            )
+            .await
+            {
+                HttpResponse::Ok().json(Action::Register {
+                    status: 0,
+                    id: uuid,
+                })
+            } else {
+                HttpResponse::InternalServerError().finish()
+            }
         }
     }
 }
@@ -308,9 +319,23 @@ async fn login(
     id: Identity,
     user: web::Form<LoginInfo>,
 ) -> HttpResponse {
-    //verify
-    id.remember(String::from("uuid"));
-    ""
+    if user.email.is_empty() || user.key.is_empty() || user.email.len() > 30 || user.key.len() > 16
+    {
+        HttpResponse::Ok().json(Action::GetToken { status: -10 })
+    } else {
+        if let Ok(result) =
+            handler::check_password(db_pool.get_ref(), user.email.clone(), user.key.clone()).await
+        {
+            if let Some(uuid) = result {
+                id.remember(uuid.to_simple().to_string());
+                HttpResponse::Ok().json(Action::GetToken { status: 0 })
+            } else {
+                HttpResponse::Ok().json(Action::GetToken { status: -1 })
+            }
+        } else {
+            HttpResponse::InternalServerError().finish()
+        }
+    }
 }
 
 #[get("/api/auth/destroyToken")]
@@ -321,16 +346,48 @@ async fn logout(id: Identity) -> HttpResponse {
 
 #[post("/api/auth/changePassword")]
 async fn change_password(
-    db_pool: web::Data<MySqlPool>,
-    id: Identity,
-    user: web::Form<ChangePassword>,
+    _db_pool: web::Data<MySqlPool>,
+    _id: Identity,
+    _user: web::Form<ChangePassword>,
 ) -> HttpResponse {
-    ""
+    HttpResponse::Ok().json(Action::ChangePassword { status: -2 })
+}
+
+#[derive(Default, serde::Deserialize)]
+#[serde(default)]
+struct NginxRtmpForm {
+    name: String,
+    token: Uuid,
 }
 
 #[get("/callback/nginx")]
-async fn nginx_callback(db_pool: web::Data<MySqlPool>, data: web::Form<()>) -> HttpResponse {
-    ""
+async fn nginx_callback(
+    db_pool: web::Data<MySqlPool>,
+    data: web::Form<NginxRtmpForm>,
+) -> HttpResponse {
+    if data.name.is_empty() || data.token.is_nil() || data.name.len() > 16 {
+        HttpResponse::Forbidden().body("Illegal Parameters!")
+    } else {
+        if let Ok(raw) =
+            handler::raw_room_by_stream_name(db_pool.get_ref(), data.name.clone()).await
+        {
+            if let Some(raw) = raw {
+                if raw.is_open() {
+                    if raw.token_match(&data.token) {
+                        HttpResponse::Ok().finish()
+                    } else {
+                        HttpResponse::Forbidden().body("Token Mismatched!")
+                    }
+                } else {
+                    HttpResponse::Forbidden().body("Room is Not Open!")
+                }
+            } else {
+                HttpResponse::Forbidden().body("Unknown Stream Name!")
+            }
+        } else {
+            HttpResponse::InternalServerError().body("Sever Error Occurred!")
+        }
+    }
 }
 
 pub fn init(cfg: &mut web::ServiceConfig) {

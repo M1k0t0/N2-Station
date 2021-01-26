@@ -19,11 +19,11 @@ async fn get_room_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
 }
 
 #[post("/api/info/room")]
-async fn get_room_detail(
+async fn get_room_info(
     db_pool: web::Data<MySqlPool>,
     room: web::Form<form::RoomInfo>,
 ) -> HttpResponse {
-    let result = handler::search_room_by_stream_name(db_pool.get_ref(), room.id.clone()).await;
+    let result = handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, false).await;
     if let Ok(room) = result {
         HttpResponse::Ok().json(Action::SearchRoom(room))
     } else {
@@ -49,7 +49,7 @@ async fn get_tag_detail(
     let result = if !tag.id.is_none() {
         handler::search_tag_by_id(db_pool.get_ref(), tag.id.unwrap()).await
     } else if !tag.tag_type.is_empty() {
-        handler::search_tag_by_type(db_pool.get_ref(), tag.tag_type.clone()).await
+        handler::search_tag_by_type(db_pool.get_ref(), &tag.tag_type).await
     } else {
         Ok(None)
     };
@@ -82,7 +82,7 @@ async fn get_user_detail(
             return HttpResponse::BadRequest().finish();
         }
     } else if !user.name.is_empty() {
-        handler::search_user_by_name(db_pool.get_ref(), user.name.clone()).await
+        handler::search_user_by_name(db_pool.get_ref(), &user.name).await
     } else {
         Ok(None)
     };
@@ -96,9 +96,27 @@ async fn get_user_detail(
 #[get("/api/user/room")]
 async fn get_user_rooms(db_pool: web::Data<MySqlPool>, id: Identity) -> HttpResponse {
     if let Some(uuid) = id.identity() {
-        let result = handler::search_rooms_by_owner(db_pool.get_ref(), uuid).await;
+        let result = handler::search_rooms_by_owner(db_pool.get_ref(), &uuid).await;
         if let Ok(rooms) = result {
             HttpResponse::Ok().json(Action::GetUserRoomList(rooms))
+        } else {
+            HttpResponse::InternalServerError().finish()
+        }
+    } else {
+        HttpResponse::Forbidden().finish()
+    }
+}
+
+#[post("/api/user/room")]
+async fn user_room_detail(
+    db_pool: web::Data<MySqlPool>,
+    id: Identity,
+    room: web::Form<form::RoomId>,
+) -> HttpResponse {
+    if id.identity().is_some() {
+        let result = handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, true).await;
+        if let Ok(room) = result {
+            HttpResponse::Ok().json(Action::UserRoomDetail(room))
         } else {
             HttpResponse::InternalServerError().finish()
         }
@@ -117,7 +135,7 @@ async fn create_tag(
         if creation.tag_type.is_empty() || creation.tag_type.len() > 10 {
             HttpResponse::Ok().json(Action::CreateTag { status: -10 })
         } else {
-            if handler::search_tag_by_type(db_pool.get_ref(), creation.tag_type.clone())
+            if handler::search_tag_by_type(db_pool.get_ref(), &creation.tag_type)
                 .await
                 .unwrap()
                 .is_some()
@@ -125,7 +143,7 @@ async fn create_tag(
                 HttpResponse::Ok().json(Action::CreateTag { status: -1 })
             } else {
                 if let Ok(_) =
-                    handler::create_tag(db_pool.get_ref(), creation.tag_type.clone(), uuid).await
+                    handler::create_tag(db_pool.get_ref(), &creation.tag_type, &uuid).await
                 {
                     HttpResponse::Ok().json(Action::CreateTag { status: 0 })
                 } else {
@@ -155,15 +173,15 @@ async fn create_room(
         {
             HttpResponse::Ok().json(Action::CreateRoom { status: -10 })
         } else {
-            if handler::exists_room(db_pool.get_ref(), room.id.clone()).await {
+            if handler::exists_room(db_pool.get_ref(), &room.id).await {
                 HttpResponse::Ok().json(Action::CreateRoom { status: -1 })
             } else {
                 if let Ok(_) = handler::create_room(
                     db_pool.get_ref(),
-                    uuid,
-                    room.id.clone(),
-                    room.title.clone(),
-                    room.desc.clone(),
+                    &uuid,
+                    &room.id,
+                    &room.title,
+                    &room.desc,
                     room.tag.clone(),
                 )
                 .await
@@ -191,7 +209,7 @@ async fn delete_room(
         if room.id.is_empty() {
             HttpResponse::Ok().json(Action::DeleteRoom { status: -10 })
         } else {
-            if let Ok(affected) = handler::delete_room(db_pool.get_ref(), room.id.clone()).await {
+            if let Ok(affected) = handler::delete_room(db_pool.get_ref(), &room.id).await {
                 if affected > 0 {
                     HttpResponse::Ok().json(Action::DeleteRoom { status: 0 })
                 } else {
@@ -211,20 +229,30 @@ async fn open_room(
     room: web::Form<form::RoomId>,
 ) -> HttpResponse {
     //TODO: check open limit
-    //TODO: response with stream token
     if id.identity().is_none() {
         HttpResponse::Forbidden().finish()
     } else {
         if room.id.is_empty() {
-            HttpResponse::Ok().json(Action::OpenRoom { status: -10 })
+            HttpResponse::Ok().json(Action::OpenRoom {
+                stream_token: Uuid::nil(),
+                status: -10,
+            })
         } else {
-            if let Ok(affected) =
-                handler::set_room_status(db_pool.get_ref(), room.id.clone(), true).await
+            if let Ok(affected) = handler::set_room_status(db_pool.get_ref(), &room.id, true).await
             {
                 if affected > 0 {
-                    HttpResponse::Ok().json(Action::OpenRoom { status: 0 })
+                    let uuid = handler::assign_stream_token(db_pool.get_ref(), &room.id)
+                        .await
+                        .unwrap();
+                    HttpResponse::Ok().json(Action::OpenRoom {
+                        stream_token: uuid,
+                        status: 0,
+                    })
                 } else {
-                    HttpResponse::Ok().json(Action::OpenRoom { status: -1 })
+                    HttpResponse::Ok().json(Action::OpenRoom {
+                        stream_token: Uuid::nil(),
+                        status: -1,
+                    })
                 }
             } else {
                 HttpResponse::InternalServerError().finish()
@@ -245,10 +273,12 @@ async fn close_room(
         if room.id.is_empty() {
             HttpResponse::Ok().json(Action::CloseRoom { status: -10 })
         } else {
-            if let Ok(affected) =
-                handler::set_room_status(db_pool.get_ref(), room.id.clone(), false).await
+            if let Ok(affected) = handler::set_room_status(db_pool.get_ref(), &room.id, false).await
             {
                 if affected > 0 {
+                    handler::unset_stream_token(db_pool.get_ref(), &room.id)
+                        .await
+                        .unwrap();
                     HttpResponse::Ok().json(Action::CloseRoom { status: 0 })
                 } else {
                     HttpResponse::Ok().json(Action::CloseRoom { status: -1 })
@@ -288,19 +318,14 @@ async fn register(db_pool: web::Data<MySqlPool>, user: web::Form<RegInfo>) -> Ht
             id: Uuid::nil(),
         })
     } else {
-        if handler::exists_user(db_pool.get_ref(), user.user.clone(), user.email.clone()).await {
+        if handler::exists_user(db_pool.get_ref(), &user.user, &user.email).await {
             HttpResponse::Ok().json(Action::Register {
                 status: -1,
                 id: Uuid::nil(),
             })
         } else {
-            if let Ok(uuid) = handler::create_user(
-                db_pool.get_ref(),
-                user.user.clone(),
-                user.email.clone(),
-                user.pass.clone(),
-            )
-            .await
+            if let Ok(uuid) =
+                handler::create_user(db_pool.get_ref(), &user.user, &user.email, &user.pass).await
             {
                 HttpResponse::Ok().json(Action::Register {
                     status: 0,
@@ -324,7 +349,7 @@ async fn login(
         HttpResponse::Ok().json(Action::GetToken { status: -10 })
     } else {
         if let Ok(result) =
-            handler::check_password(db_pool.get_ref(), user.email.clone(), user.key.clone()).await
+            handler::check_password_email(db_pool.get_ref(), &user.email, &user.key).await
         {
             if let Some(uuid) = result {
                 id.remember(uuid.to_simple().to_string());
@@ -346,11 +371,43 @@ async fn logout(id: Identity) -> HttpResponse {
 
 #[post("/api/auth/changePassword")]
 async fn change_password(
-    _db_pool: web::Data<MySqlPool>,
-    _id: Identity,
-    _user: web::Form<ChangePassword>,
+    db_pool: web::Data<MySqlPool>,
+    id: Identity,
+    passwd: web::Form<ChangePassword>,
 ) -> HttpResponse {
-    HttpResponse::Ok().json(Action::ChangePassword { status: -2 })
+    if let Some(uuid) = id.identity() {
+        if passwd.new_pass.is_empty()
+            || passwd.old_pass.is_empty()
+            || passwd.new_pass.len() > 16
+            || passwd.old_pass.len() > 16
+        {
+            HttpResponse::Ok().json(Action::ChangePassword { status: -10 })
+        } else {
+            if let Ok(opt) = handler::check_password_uuid(
+                db_pool.get_ref(),
+                &Uuid::parse_str(&uuid).unwrap(),
+                &passwd.old_pass,
+            )
+            .await
+            {
+                if opt.is_some() {
+                    if let Ok(_) =
+                        handler::update_password(db_pool.get_ref(), &uuid, &passwd.new_pass).await
+                    {
+                        HttpResponse::Ok().json(Action::ChangePassword { status: 0 })
+                    } else {
+                        HttpResponse::Ok().json(Action::ChangePassword { status: -2 })
+                    }
+                } else {
+                    HttpResponse::Ok().json(Action::ChangePassword { status: -1 })
+                }
+            } else {
+                HttpResponse::Ok().json(Action::ChangePassword { status: -2 })
+            }
+        }
+    } else {
+        HttpResponse::Forbidden().finish()
+    }
 }
 
 #[derive(Default, serde::Deserialize)]
@@ -368,9 +425,7 @@ async fn nginx_callback(
     if data.name.is_empty() || data.token.is_nil() || data.name.len() > 16 {
         HttpResponse::Forbidden().body("Illegal Parameters!")
     } else {
-        if let Ok(raw) =
-            handler::raw_room_by_stream_name(db_pool.get_ref(), data.name.clone()).await
-        {
+        if let Ok(raw) = handler::raw_room_by_stream_name(db_pool.get_ref(), &data.name).await {
             if let Some(raw) = raw {
                 if raw.is_open() {
                     if raw.token_match(&data.token) {
@@ -392,12 +447,13 @@ async fn nginx_callback(
 
 pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(get_room_list)
-        .service(get_room_detail)
+        .service(get_room_info)
         .service(get_tag_list)
         .service(get_tag_detail)
         .service(get_user_list)
         .service(get_user_detail)
         .service(get_user_rooms)
+        .service(user_room_detail)
         .service(create_tag)
         .service(create_room)
         .service(delete_room)

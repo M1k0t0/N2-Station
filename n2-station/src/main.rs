@@ -12,7 +12,7 @@ mod backend;
 #[derive(FromArgs)]
 #[argh(description = "N2Station Backend Startup Parameter")]
 struct Param {
-    #[argh(option, description = "database server port", default = "8848")]
+    #[argh(option, description = "backend server port", default = "8848")]
     server_port: u16,
 }
 

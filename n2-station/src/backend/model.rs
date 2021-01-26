@@ -101,6 +101,7 @@ pub mod response {
         tag: Vec<String>,
         status: String,
         user: User,
+        stream_token: Option<Uuid>,
     }
 
     pub struct RawTag {
@@ -122,6 +123,7 @@ pub mod response {
         pub(super) username: String,
         pub(super) email: String,
         pub(super) passwd: Vec<u8>,
+        #[allow(dead_code)]
         pub(super) reg_date: OffsetDateTime,
     }
 
@@ -132,9 +134,10 @@ pub mod response {
         email: String,
     }
 
+    #[allow(dead_code)]
     #[derive(serde::Serialize)]
-    #[serde(rename = "action")]
     #[serde(rename_all = "camelCase")]
+    #[serde(tag = "action")]
     pub enum Action {
         GetRoomList(Vec<BakedRoom>),
         SearchRoom(Option<BakedRoom>),
@@ -143,10 +146,11 @@ pub mod response {
         GetUserList(Vec<BakedUser>),
         SearchUser(Option<BakedUser>),
         GetUserRoomList(Vec<BakedRoom>),
+        UserRoomDetail(Option<BakedRoom>),
         CreateTag { status: i32 },
         CreateRoom { status: i32 },
         DeleteRoom { status: i32 },
-        OpenRoom { status: i32 },
+        OpenRoom { stream_token: Uuid, status: i32 },
         CloseRoom { status: i32 },
         EditRoom(BakedRoom),
         Register { status: i32, id: Uuid },
@@ -172,7 +176,7 @@ pub mod response {
     */
 
     impl RawRoom {
-        pub async fn bake(&self, db_pool: &MySqlPool) -> Result<BakedRoom> {
+        pub async fn bake(&self, db_pool: &MySqlPool, detail: bool) -> Result<BakedRoom> {
             let tag = self
                 .tag
                 .clone()
@@ -180,7 +184,7 @@ pub mod response {
                 .split(';')
                 .map(|s| s.to_string())
                 .collect();
-            let status = if self.open == 1 { "open" } else { "close" };
+            let status = if self.is_open() { "open" } else { "close" };
             let uuid = Uuid::parse_str(self.owner_uuid.as_str())?;
             let raw = query_as!(
                 RawUser,
@@ -189,6 +193,15 @@ pub mod response {
             )
             .fetch_one(db_pool)
             .await?;
+            let stream_token = if detail && self.is_open() {
+                if let Some(ref uuid) = self.stream_token {
+                    Some(Uuid::parse_str(uuid.as_str()).unwrap())
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
             Ok(BakedRoom {
                 owner_uuid: uuid,
                 stream_id: self.stream_id.clone(),
@@ -197,6 +210,7 @@ pub mod response {
                 tag: tag,
                 status: status.to_string(),
                 user: raw.into(),
+                stream_token,
             })
         }
 
@@ -246,7 +260,7 @@ pub mod response {
 pub mod handler {
     use super::response::{BakedRoom, BakedTag, BakedUser, RawRoom, RawTag, RawUser};
     use anyhow::Result;
-    use bcrypt::{hash, verify, DEFAULT_COST};
+    use bcrypt::{hash, verify};
     use futures::{stream, StreamExt};
     use sqlx::{query, query_as, Done, MySqlPool};
     use uuid::Uuid;
@@ -257,15 +271,12 @@ pub mod handler {
                 .fetch_all(db_pool)
                 .await?,
         )
-        .then(|raw| async move { raw.bake(db_pool).await.unwrap() })
+        .then(|raw| async move { raw.bake(db_pool, false).await.unwrap() })
         .collect()
         .await)
     }
 
-    pub async fn search_rooms_by_owner(
-        db_pool: &MySqlPool,
-        owner: String,
-    ) -> Result<Vec<BakedRoom>> {
+    pub async fn search_rooms_by_owner(db_pool: &MySqlPool, owner: &str) -> Result<Vec<BakedRoom>> {
         Ok(stream::iter(
             query_as!(
                 RawRoom,
@@ -275,14 +286,14 @@ pub mod handler {
             .fetch_all(db_pool)
             .await?,
         )
-        .then(|raw| async move { raw.bake(db_pool).await.unwrap() })
+        .then(|raw| async move { raw.bake(db_pool, false).await.unwrap() })
         .collect()
         .await)
     }
 
     pub async fn raw_room_by_stream_name(
         db_pool: &MySqlPool,
-        stream_name: String,
+        stream_name: &str,
     ) -> Result<Option<RawRoom>> {
         Ok(query_as!(
             RawRoom,
@@ -295,11 +306,12 @@ pub mod handler {
 
     pub async fn search_room_by_stream_name(
         db_pool: &MySqlPool,
-        stream_name: String,
+        stream_name: &str,
+        detail: bool,
     ) -> Result<Option<BakedRoom>> {
         let query = raw_room_by_stream_name(db_pool, stream_name).await?;
         if let Some(raw) = query {
-            Ok(Some(raw.bake(db_pool).await?))
+            Ok(Some(raw.bake(db_pool, detail).await?))
         } else {
             Ok(None)
         }
@@ -327,7 +339,7 @@ pub mod handler {
 
     pub async fn search_tag_by_type(
         db_pool: &MySqlPool,
-        tag_type: String,
+        tag_type: &str,
     ) -> Result<Option<BakedTag>> {
         let query = query_as!(RawTag, r#"SELECT * FROM tags WHERE tag_type = ?"#, tag_type)
             .fetch_optional(db_pool)
@@ -360,10 +372,7 @@ pub mod handler {
         }
     }
 
-    pub async fn search_user_by_name(
-        db_pool: &MySqlPool,
-        name: String,
-    ) -> Result<Option<BakedUser>> {
+    pub async fn search_user_by_name(db_pool: &MySqlPool, name: &str) -> Result<Option<BakedUser>> {
         let query = query_as!(RawUser, r#"SELECT * FROM users WHERE username = ?"#, name)
             .fetch_optional(db_pool)
             .await?;
@@ -374,7 +383,7 @@ pub mod handler {
         }
     }
 
-    pub async fn create_tag(db_pool: &MySqlPool, tag_type: String, owner: String) -> Result<()> {
+    pub async fn create_tag(db_pool: &MySqlPool, tag_type: &str, owner: &str) -> Result<()> {
         query!(
             r#"INSERT INTO tags (tag_type, creator_uuid) VALUES(?, ?)"#,
             tag_type,
@@ -387,10 +396,10 @@ pub mod handler {
 
     pub async fn create_room(
         db_pool: &MySqlPool,
-        creator: String,
-        stream_id: String,
-        title: String,
-        desc: String,
+        creator: &str,
+        stream_id: &str,
+        title: &str,
+        desc: &str,
         tag: Vec<String>,
     ) -> Result<()> {
         let tag = if tag.len() > 0 {
@@ -411,7 +420,7 @@ pub mod handler {
         Ok(())
     }
 
-    pub async fn delete_room(db_pool: &MySqlPool, stream_id: String) -> Result<u64> {
+    pub async fn delete_room(db_pool: &MySqlPool, stream_id: &str) -> Result<u64> {
         Ok(
             query!(r#"DELETE FROM rooms WHERE stream_id = ?"#, stream_id)
                 .execute(db_pool)
@@ -420,7 +429,7 @@ pub mod handler {
         )
     }
 
-    pub async fn exists_room(db_pool: &MySqlPool, stream_id: String) -> bool {
+    pub async fn exists_room(db_pool: &MySqlPool, stream_id: &str) -> bool {
         query!(r#"SELECT * FROM rooms WHERE stream_id = ?"#, stream_id)
             .fetch_optional(db_pool)
             .await
@@ -428,7 +437,7 @@ pub mod handler {
             .is_some()
     }
 
-    pub async fn exists_user(db_pool: &MySqlPool, username: String, email: String) -> bool {
+    pub async fn exists_user(db_pool: &MySqlPool, username: &str, email: &str) -> bool {
         query!(
             r#"SELECT * FROM users WHERE username = ? OR email = ?"#,
             username,
@@ -440,11 +449,7 @@ pub mod handler {
         .is_some()
     }
 
-    pub async fn set_room_status(
-        db_pool: &MySqlPool,
-        stream_id: String,
-        open: bool,
-    ) -> Result<u64> {
+    pub async fn set_room_status(db_pool: &MySqlPool, stream_id: &str, open: bool) -> Result<u64> {
         Ok(query!(
             r#"UPDATE rooms SET open = ? WHERE stream_id = ?"#,
             open,
@@ -455,15 +460,38 @@ pub mod handler {
         .rows_affected())
     }
 
+    pub async fn assign_stream_token(db_pool: &MySqlPool, stream_id: &str) -> Result<Uuid> {
+        let uuid = Uuid::new_v4();
+        let uuid_str = uuid.to_simple().to_string();
+        query!(
+            r#"UPDATE rooms SET stream_token = ? WHERE stream_id = ?"#,
+            uuid_str,
+            stream_id
+        )
+        .execute(db_pool)
+        .await?;
+        Ok(uuid)
+    }
+
+    pub async fn unset_stream_token(db_pool: &MySqlPool, stream_id: &str) -> Result<()> {
+        query!(
+            r#"UPDATE rooms SET stream_token = NULL WHERE stream_id = ?"#,
+            stream_id
+        )
+        .execute(db_pool)
+        .await?;
+        Ok(())
+    }
+
     pub async fn create_user(
         db_pool: &MySqlPool,
-        name: String,
-        email: String,
-        pass: String,
+        name: &str,
+        email: &str,
+        pass: &str,
     ) -> Result<Uuid> {
         let uuid = Uuid::new_v4();
         let uuid_str = uuid.to_simple().to_string();
-        let pass_str = hash(pass, DEFAULT_COST)?;
+        let pass_str = hash(pass, 4)?;
         let pass = pass_str.as_bytes();
         let _ = query!(
             r#"INSERT INTO users (uuid, username, email, passwd) VALUES(?, ?, ?, ?)"#,
@@ -477,10 +505,10 @@ pub mod handler {
         Ok(uuid)
     }
 
-    pub async fn check_password(
+    pub async fn check_password_email(
         db_pool: &MySqlPool,
-        email: String,
-        pass: String,
+        email: &str,
+        pass: &str,
     ) -> Result<Option<Uuid>> {
         let raw = query_as!(RawUser, r#"SELECT * FROM users WHERE email = ?"#, email)
             .fetch_optional(db_pool)
@@ -495,5 +523,35 @@ pub mod handler {
         } else {
             Ok(None)
         }
+    }
+
+    pub async fn check_password_uuid(
+        db_pool: &MySqlPool,
+        uuid: &Uuid,
+        pass: &str,
+    ) -> Result<Option<Uuid>> {
+        let uuid_str = uuid.to_simple_ref().to_string();
+        let raw = query_as!(RawUser, r#"SELECT * FROM users WHERE uuid = ?"#, uuid_str)
+            .fetch_optional(db_pool)
+            .await?;
+        if let Some(raw) = raw {
+            let real = String::from_utf8(raw.passwd)?;
+            if verify(pass, &real)? {
+                Ok(Some(Uuid::parse_str(&raw.uuid)?))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn update_password(db_pool: &MySqlPool, uuid: &str, new: &str) -> Result<()> {
+        let pass_str = hash(new, 4)?;
+        let pass = pass_str.as_bytes();
+        query!(r#"UPDATE users SET passwd = ? WHERE uuid = ?"#, pass, uuid)
+            .execute(db_pool)
+            .await?;
+        Ok(())
     }
 }

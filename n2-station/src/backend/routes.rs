@@ -1,7 +1,7 @@
 //!TODO: more appropriate error handling
 //!TODO: more elegant tag system
 
-use super::{form, handler, Action};
+use super::{form, handler, model::response::BakedRoom, Action};
 use actix_identity::Identity;
 use actix_web::{get, post, web, HttpResponse};
 use form::{ChangePassword, LoginInfo, RegInfo};
@@ -12,7 +12,7 @@ use uuid::Uuid;
 async fn get_room_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
     let result = handler::get_all_rooms(db_pool.get_ref()).await;
     if let Ok(rooms) = result {
-        HttpResponse::Ok().json(Action::GetRoomList(rooms))
+        HttpResponse::Ok().json(Action::GetRoomList { rooms })
     } else {
         HttpResponse::InternalServerError().finish()
     }
@@ -25,7 +25,7 @@ async fn get_room_info(
 ) -> HttpResponse {
     let result = handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, false).await;
     if let Ok(room) = result {
-        HttpResponse::Ok().json(Action::SearchRoom(room))
+        HttpResponse::Ok().json(Action::SearchRoom { room })
     } else {
         HttpResponse::InternalServerError().finish()
     }
@@ -35,7 +35,7 @@ async fn get_room_info(
 async fn get_tag_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
     let result = handler::get_all_tags(db_pool.get_ref()).await;
     if let Ok(tags) = result {
-        HttpResponse::Ok().json(Action::GetTagList(tags))
+        HttpResponse::Ok().json(Action::GetTagList { tags })
     } else {
         HttpResponse::InternalServerError().finish()
     }
@@ -54,7 +54,7 @@ async fn get_tag_detail(
         Ok(None)
     };
     if let Ok(tag) = result {
-        HttpResponse::Ok().json(Action::SearchTag(tag))
+        HttpResponse::Ok().json(Action::SearchTag { tag })
     } else {
         HttpResponse::InternalServerError().finish()
     }
@@ -64,7 +64,7 @@ async fn get_tag_detail(
 async fn get_user_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
     let result = handler::get_all_users(db_pool.get_ref()).await;
     if let Ok(users) = result {
-        HttpResponse::Ok().json(Action::GetUserList(users))
+        HttpResponse::Ok().json(Action::GetUserList { users })
     } else {
         HttpResponse::InternalServerError().finish()
     }
@@ -87,7 +87,7 @@ async fn get_user_detail(
         Ok(None)
     };
     if let Ok(user) = result {
-        HttpResponse::Ok().json(Action::SearchUser(user))
+        HttpResponse::Ok().json(Action::SearchUser { user })
     } else {
         HttpResponse::InternalServerError().finish()
     }
@@ -98,7 +98,7 @@ async fn get_user_rooms(db_pool: web::Data<MySqlPool>, id: Identity) -> HttpResp
     if let Some(uuid) = id.identity() {
         let result = handler::search_rooms_by_owner(db_pool.get_ref(), &uuid).await;
         if let Ok(rooms) = result {
-            HttpResponse::Ok().json(Action::GetUserRoomList(rooms))
+            HttpResponse::Ok().json(Action::GetUserRoomList { rooms })
         } else {
             HttpResponse::InternalServerError().finish()
         }
@@ -116,7 +116,7 @@ async fn user_room_detail(
     if id.identity().is_some() {
         let result = handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, true).await;
         if let Ok(room) = result {
-            HttpResponse::Ok().json(Action::UserRoomDetail(room))
+            HttpResponse::Ok().json(Action::UserRoomDetail { room })
         } else {
             HttpResponse::InternalServerError().finish()
         }
@@ -300,7 +300,9 @@ async fn edit_room(
     if id.identity().is_none() {
         HttpResponse::Forbidden().finish()
     } else {
-        HttpResponse::NoContent().finish()
+        HttpResponse::Ok().json(Action::EditRoom {
+            updated: BakedRoom::default(),
+        })
     }
 }
 
@@ -420,7 +422,7 @@ struct NginxRtmpForm {
 #[get("/callback/nginx")]
 async fn nginx_callback(
     db_pool: web::Data<MySqlPool>,
-    data: web::Form<NginxRtmpForm>,
+    data: web::Query<NginxRtmpForm>,
 ) -> HttpResponse {
     if data.name.is_empty() || data.token.is_nil() || data.name.len() > 16 {
         HttpResponse::Forbidden().body("Illegal Parameters!")

@@ -86,13 +86,13 @@ pub mod response {
         pub(super) stream_token: Option<String>,
     }
 
-    #[derive(serde::Serialize)]
+    #[derive(serde::Serialize, Default)]
     pub struct User {
         id: Uuid,
         name: String,
     }
 
-    #[derive(serde::Serialize)]
+    #[derive(serde::Serialize, Default)]
     pub struct BakedRoom {
         owner_uuid: Uuid,
         stream_id: String,
@@ -139,20 +139,20 @@ pub mod response {
     #[serde(rename_all = "camelCase")]
     #[serde(tag = "action")]
     pub enum Action {
-        GetRoomList(Vec<BakedRoom>),
-        SearchRoom(Option<BakedRoom>),
-        GetTagList(Vec<BakedTag>),
-        SearchTag(Option<BakedTag>),
-        GetUserList(Vec<BakedUser>),
-        SearchUser(Option<BakedUser>),
-        GetUserRoomList(Vec<BakedRoom>),
-        UserRoomDetail(Option<BakedRoom>),
+        GetRoomList { rooms: Vec<BakedRoom> },
+        SearchRoom { room: Option<BakedRoom> },
+        GetTagList { tags: Vec<BakedTag> },
+        SearchTag { tag: Option<BakedTag> },
+        GetUserList { users: Vec<BakedUser> },
+        SearchUser { user: Option<BakedUser> },
+        GetUserRoomList { rooms: Vec<BakedRoom> },
+        UserRoomDetail { room: Option<BakedRoom> },
         CreateTag { status: i32 },
         CreateRoom { status: i32 },
         DeleteRoom { status: i32 },
         OpenRoom { stream_token: Uuid, status: i32 },
         CloseRoom { status: i32 },
-        EditRoom(BakedRoom),
+        EditRoom { updated: BakedRoom },
         Register { status: i32, id: Uuid },
         GetToken { status: i32 },
         DestroyToken { status: i32 },

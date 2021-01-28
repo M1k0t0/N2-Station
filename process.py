@@ -5,50 +5,64 @@ LOG_WARN=1
 LOG_ERROR=2
 LOG_UNDEFINED=3
 
+RETURN_DATA=0
+RETURN_CODE=-1
+
 def connect_server(addr):
     try:
         cli = pymongo.MongoClient("mongodb://localhost:27017/")
     except BaseException as e:
         print(e)
         sys.exit("Cannot connect to dbserver")
-    return cli["N2-Station"]
+    return cli
 
-def check_db(db):
+def check_db(cli):
     if "N2-Station" not in cli.list_database_names():
-        setup_db()
+        setup_db(cli["N2-Station"])
         
 def setup_db(db):
     utils.simple_log(db,LOG_INFO,"Database being set up")
 
-def add_user_to_db(db, data, cache):
+def add_user_to_db(db, data):
     if "id" not in data:
         data["_id"]=str(uuid.uuid4()).replace('-','')
     if "user" not in data:
         data["name"]=str(uuid.uuid4())[0:8]
-    if "pass" not in data:
-        data["pass"]=utils.get_hashed_password(str(uuid.uuid4())[0:9])
+    if "password" not in data:
+        data["password"]=str(uuid.uuid4())[0:8]
     if "email" not in data:
         data["email"]="random@debug.dev"
     if "rooms" not in data:
         data["rooms"]=[]
     if "limit" not in data:
         data["limit"]={ "room_count": 5 } # Config WIP
+    if 'token' not in data:
+        data["token"]={}
     
     if db["users"].find_one({"email":data["email"]}) != None:
-        return (-1, -1)
+        return (-1, RETURN_CODE)
     if db["users"].find_one({"user":data["user"]}) != None:
-        return (-2, -2)
+        return (-2, RETURN_CODE)
     
     #if 密码强度不合格:   WIP
         #return -3
-        
-    data["pass"]=utils.get_hashed_password(data["pass"])
+
+    data["password"]=utils.get_hashed_password(data["password"])
     
     db["users"].insert_one(data)
-    if "userList" not in cache:
-        cache["userList"]={}
-    cache["userList"][data["_id"]]={ "id": data["_id"], "user": data["user"], "email": data["email"] }
-    return (data["_id"], 0)
-    
+    return (data["_id"], RETURN_DATA)
+
+def delete_user_from_db(db, data):
+    method, data = utils.get_input(data)
+
+    method=method.replace("id","_id",1)
+
+    if method==None:
+        return (-10, RETURN_CODE)
+
+    db["users"].delete_one({method:data})
+
+    return (0,RETURN_DATA)
+
 if __name__=="__main__":
     os._exit(0)

@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# mongodb
+db/
+
+# vsc-coderunner-temp-file
+tempCodeRunnerFile.py

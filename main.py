@@ -295,6 +295,9 @@ def destroyToken():
     except BaseException as e:
         return jsonify(utils.simple_reply("destroyToken",str(e)))
     
+    if token not in user.token:
+        return jsonify(utils.simple_reply("destroyToken",-1))
+
     del user.token[token]
     user.sync_data()
 

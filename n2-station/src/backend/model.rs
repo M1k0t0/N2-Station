@@ -1,4 +1,6 @@
 pub mod form {
+    use uuid::Uuid;
+
     #[derive(Default, serde::Deserialize)]
     #[serde(default)]
     pub struct RoomInfo {
@@ -43,7 +45,11 @@ pub mod form {
         pub id: String,
     }
 
-    pub type RoomEdition = RoomCreation;
+    #[derive(Default, serde::Deserialize)]
+    pub struct RoomEdition {
+        pub room: Uuid,
+        pub update: RoomCreation,
+    }
 
     #[derive(Default, serde::Deserialize)]
     #[serde(default)]

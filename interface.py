@@ -30,6 +30,7 @@ class User:
         self.email=user["email"]
         self.password=user["password"]
         self.rooms=user["rooms"]
+        self.streaming=user["streaming"]
         self.limit=user["limit"]
         self.token=user["token"]
 
@@ -55,8 +56,41 @@ class User:
 
         return t
 
+    def create_room(self, data):
+        data["time"]=int(time.time())
+        data["status"]="close"
 
+        id=data["id"]
+        del data["id"]
+
+        self.rooms[id]=data
+        self.sync_data()
+
+        data["userID"]=self.id
+
+        self.db['rooms'].insert_one(data)
     
+    def delete_room(self, data):
+        self.close_room()
+
+        del self.rooms[data["id"]]
+        self.sync_data()
+
+        self.db['rooms'].delete_one({"id":data["id"]})
     
+    def open_room(self, data):
+        self.rooms[data["id"]]["status"]="open"
+        self.streaming.append(id)
+        self.sync_data()
+
+        self.db['rooms'].update_one({"id":data["id"]},{ "$set": { "status": "open" }})
+    
+    def close_room(self, data):
+        self.rooms[data["id"]]["status"]="close"
+        del self.streaming[self.streaming.index(data["id"])]
+        self.sync_data()
+
+        self.db['rooms'].update_one({"id":data["id"]},{ "$set": { "status": "close" }})
+
 if __name__=="__main__":
     os._exit(0)

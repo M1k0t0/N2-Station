@@ -53,7 +53,7 @@ def add_user_to_db(db, data):
     return (data["_id"], RETURN_DATA)
 
 def delete_user_from_db(db, data):
-    method, data = utils.get_input(data)
+    method, data = utils.get_input(data,["id","user","email"])
 
     method=method.replace("id","_id",1)
 

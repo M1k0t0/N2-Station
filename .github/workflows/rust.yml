@@ -14,7 +14,7 @@ jobs:
   build:
     defaults:
       run:
-        working-directory: scripts
+        working-directory: n2-station
         
     runs-on: ubuntu-latest
 

@@ -25,8 +25,8 @@ struct ServerConfig {
     pool_max_conns: u32,
     server_port: u16,
     database_url: String,
-    room_creation_limit: u32,
-    room_open_limit: u32,
+    room_creation_limit: usize,
+    room_open_limit: usize,
     authorization_force_https: bool,
 }
 
@@ -67,6 +67,7 @@ async fn main() -> Result<()> {
                     .secure(config.authorization_force_https),
             ))
             .data(mysql_pool.clone())
+            .data(config.clone())
             .configure(backend::init)
     })
     .bind((address, port))?

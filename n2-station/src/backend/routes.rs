@@ -1,6 +1,8 @@
 //!TODO: more appropriate error handling
 
-use super::{form, handler, model::response::BakedRoom, Action};
+use crate::ServerConfig;
+
+use super::{form, handler, Action};
 use actix_identity::Identity;
 use actix_web::{get, post, web, HttpResponse};
 use form::{ChangePassword, LoginInfo, RegInfo};
@@ -22,7 +24,7 @@ async fn get_room_info(
     db_pool: web::Data<MySqlPool>,
     room: web::Form<form::RoomInfo>,
 ) -> HttpResponse {
-    let result = handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, false).await;
+    let result = handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, "", false).await;
     if let Ok(room) = result {
         HttpResponse::Ok().json(Action::SearchRoom { room })
     } else {
@@ -83,8 +85,9 @@ async fn user_room_detail(
     id: Identity,
     room: web::Form<form::RoomId>,
 ) -> HttpResponse {
-    if id.identity().is_some() {
-        let result = handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, true).await;
+    if let Some(uuid) = id.identity() {
+        let result =
+            handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, &uuid, true).await;
         if let Ok(room) = result {
             HttpResponse::Ok().json(Action::UserRoomDetail { room })
         } else {
@@ -98,17 +101,28 @@ async fn user_room_detail(
 #[post("/api/user/createRoom")]
 async fn create_room(
     db_pool: web::Data<MySqlPool>,
+    config: web::Data<ServerConfig>,
     id: Identity,
     room: web::Form<form::RoomCreation>,
 ) -> HttpResponse {
     if let Some(uuid) = id.identity() {
-        //TODO: check ';' in tags
-        if room.id.is_empty()
+        if handler::raw_rooms_for_user(db_pool.get_ref(), &uuid)
+            .await
+            .unwrap()
+            .len()
+            > config.room_creation_limit
+        {
+            HttpResponse::Ok().json(Action::OpenRoom {
+                stream_token: Uuid::nil(),
+                status: -2,
+            })
+        } else if room.id.is_empty()
             || room.title.is_empty()
             || room.desc.is_empty()
             || room.id.len() > 16
             || room.title.len() > 16
             || room.desc.len() > 20
+            || room.tag.iter().any(|s| s.contains(';'))
         {
             HttpResponse::Ok().json(Action::CreateRoom { status: -10 })
         } else {
@@ -142,13 +156,11 @@ async fn delete_room(
     id: Identity,
     room: web::Form<form::RoomId>,
 ) -> HttpResponse {
-    if id.identity().is_none() {
-        HttpResponse::Forbidden().finish()
-    } else {
+    if let Some(uuid) = id.identity() {
         if room.id.is_empty() {
             HttpResponse::Ok().json(Action::DeleteRoom { status: -10 })
         } else {
-            if let Ok(affected) = handler::delete_room(db_pool.get_ref(), &room.id).await {
+            if let Ok(affected) = handler::delete_room(db_pool.get_ref(), &room.id, &uuid).await {
                 if affected > 0 {
                     HttpResponse::Ok().json(Action::DeleteRoom { status: 0 })
                 } else {
@@ -158,26 +170,37 @@ async fn delete_room(
                 HttpResponse::InternalServerError().finish()
             }
         }
+    } else {
+        HttpResponse::Forbidden().finish()
     }
 }
 
 #[post("/api/user/openRoom")]
 async fn open_room(
     db_pool: web::Data<MySqlPool>,
+    config: web::Data<ServerConfig>,
     id: Identity,
     room: web::Form<form::RoomId>,
 ) -> HttpResponse {
-    //TODO: check open limit
-    if id.identity().is_none() {
-        HttpResponse::Forbidden().finish()
-    } else {
-        if room.id.is_empty() {
+    if let Some(uuid) = id.identity() {
+        if handler::raw_open_rooms(db_pool.get_ref())
+            .await
+            .unwrap()
+            .len()
+            > config.room_open_limit
+        {
+            HttpResponse::Ok().json(Action::OpenRoom {
+                stream_token: Uuid::nil(),
+                status: -2,
+            })
+        } else if room.id.is_empty() {
             HttpResponse::Ok().json(Action::OpenRoom {
                 stream_token: Uuid::nil(),
                 status: -10,
             })
         } else {
-            if let Ok(affected) = handler::set_room_status(db_pool.get_ref(), &room.id, true).await
+            if let Ok(affected) =
+                handler::set_room_status(db_pool.get_ref(), &room.id, true, &uuid).await
             {
                 if affected > 0 {
                     let uuid = handler::assign_stream_token(db_pool.get_ref(), &room.id)
@@ -197,6 +220,8 @@ async fn open_room(
                 HttpResponse::InternalServerError().finish()
             }
         }
+    } else {
+        HttpResponse::Forbidden().finish()
     }
 }
 
@@ -206,13 +231,12 @@ async fn close_room(
     id: Identity,
     room: web::Form<form::RoomId>,
 ) -> HttpResponse {
-    if id.identity().is_none() {
-        HttpResponse::Forbidden().finish()
-    } else {
+    if let Some(uuid) = id.identity() {
         if room.id.is_empty() {
             HttpResponse::Ok().json(Action::CloseRoom { status: -10 })
         } else {
-            if let Ok(affected) = handler::set_room_status(db_pool.get_ref(), &room.id, false).await
+            if let Ok(affected) =
+                handler::set_room_status(db_pool.get_ref(), &room.id, false, &uuid).await
             {
                 if affected > 0 {
                     handler::unset_stream_token(db_pool.get_ref(), &room.id)
@@ -226,22 +250,8 @@ async fn close_room(
                 HttpResponse::InternalServerError().finish()
             }
         }
-    }
-}
-
-#[post("/api/user/editRoom")]
-async fn edit_room(
-    _db_pool: web::Data<MySqlPool>,
-    id: Identity,
-    _room: web::Form<form::RoomEdition>,
-) -> HttpResponse {
-    //not implemented yet
-    if id.identity().is_none() {
-        HttpResponse::Forbidden().finish()
     } else {
-        HttpResponse::Ok().json(Action::EditRoom {
-            updated: BakedRoom::default(),
-        })
+        HttpResponse::Forbidden().finish()
     }
 }
 
@@ -397,7 +407,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
         .service(delete_room)
         .service(open_room)
         .service(close_room)
-        .service(edit_room)
         .service(register)
         .service(login)
         .service(logout)

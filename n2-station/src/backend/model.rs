@@ -125,7 +125,6 @@ pub mod response {
         DeleteRoom { status: i32 },
         OpenRoom { stream_token: Uuid, status: i32 },
         CloseRoom { status: i32 },
-        EditRoom { updated: BakedRoom },
         Register { status: i32, id: Uuid },
         GetToken { status: i32 },
         DestroyToken { status: i32 },
@@ -267,14 +266,35 @@ pub mod handler {
         .await?)
     }
 
+    pub async fn raw_rooms_for_user(db_pool: &MySqlPool, user: &str) -> Result<Vec<RawRoom>> {
+        Ok(
+            query_as!(RawRoom, r#"SELECT * FROM rooms WHERE owner_uuid = ?"#, user)
+                .fetch_all(db_pool)
+                .await?,
+        )
+    }
+
+    pub async fn raw_open_rooms(db_pool: &MySqlPool) -> Result<Vec<RawRoom>> {
+        Ok(
+            query_as!(RawRoom, r#"SELECT * FROM rooms WHERE open = TRUE"#)
+                .fetch_all(db_pool)
+                .await?,
+        )
+    }
+
     pub async fn search_room_by_stream_name(
         db_pool: &MySqlPool,
         stream_name: &str,
+        owner_uuid: &str,
         detail: bool,
     ) -> Result<Option<BakedRoom>> {
         let query = raw_room_by_stream_name(db_pool, stream_name).await?;
         if let Some(raw) = query {
-            Ok(Some(raw.bake(db_pool, detail).await?))
+            if detail && raw.owner_uuid == owner_uuid {
+                Ok(Some(raw.bake(db_pool, detail).await?))
+            } else {
+                Ok(None)
+            }
         } else {
             Ok(None)
         }
@@ -338,13 +358,19 @@ pub mod handler {
         Ok(())
     }
 
-    pub async fn delete_room(db_pool: &MySqlPool, stream_id: &str) -> Result<u64> {
-        Ok(
-            query!(r#"DELETE FROM rooms WHERE stream_id = ?"#, stream_id)
-                .execute(db_pool)
-                .await?
-                .rows_affected(),
+    pub async fn delete_room(
+        db_pool: &MySqlPool,
+        stream_id: &str,
+        owner_uuid: &str,
+    ) -> Result<u64> {
+        Ok(query!(
+            r#"DELETE FROM rooms WHERE stream_id = ? AND owner_uuid = ?"#,
+            stream_id,
+            owner_uuid
         )
+        .execute(db_pool)
+        .await?
+        .rows_affected())
     }
 
     pub async fn exists_room(db_pool: &MySqlPool, stream_id: &str) -> bool {
@@ -367,11 +393,17 @@ pub mod handler {
         .is_some()
     }
 
-    pub async fn set_room_status(db_pool: &MySqlPool, stream_id: &str, open: bool) -> Result<u64> {
+    pub async fn set_room_status(
+        db_pool: &MySqlPool,
+        stream_id: &str,
+        open: bool,
+        owner_uuid: &str,
+    ) -> Result<u64> {
         Ok(query!(
-            r#"UPDATE rooms SET open = ? WHERE stream_id = ?"#,
+            r#"UPDATE rooms SET open = ? WHERE stream_id = ? AND owner_uuid = ?"#,
             open,
-            stream_id
+            stream_id,
+            owner_uuid
         )
         .execute(db_pool)
         .await?

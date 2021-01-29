@@ -1,0 +1,40 @@
+name: Build Backend
+
+on:
+  push:
+    branches: [ rust-backend ]
+  pull_request:
+    branches: [ rust-backend ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Shutdown Ubuntu MySQL
+      run: sudo service mysql stop
+    - uses: mirromutth/mysql-action@v1.1
+      with:
+        mysql database: 'n2station'
+        mysql root password: 'root'
+    - name: Prepare tables
+      run: mysql -u root -p root n2station < setup.sql
+    - name: Build
+      run: cargo build --verbose --release
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        path: ${{ github.workspace }}/target/release/n2-station
+        name: 'n2-station'

@@ -30,7 +30,7 @@ jobs:
         mysql database: 'n2station'
         mysql root password: 'root'
     - name: Prepare tables
-      run: mysql -u root -p root n2station < setup.sql
+      run: mysql --user="root" --password="root" --database="n2station" < "setup.sql"
     - name: Build
       run: cargo build --verbose --release
     - name: Upload artifacts

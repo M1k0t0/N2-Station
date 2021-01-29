@@ -40,7 +40,7 @@ jobs:
     - name: Prepare tables
       env:
           PORT: ${{ job.services.mariadb.ports[3306] }}
-      run: mysql --user="root" --password="root" --database="n2station" -h"127.0.0.1" -P"$PORT" < "setup.sql"
+      run: mysql --user="root" --password="root" --database="n2station" -h"127.0.0.1" -P"$PORT" < "../setup.sql"
     - name: Build
       run: cargo build --verbose --release
     - name: Upload artifacts

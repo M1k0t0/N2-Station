@@ -41,6 +41,10 @@ jobs:
       env:
           PORT: ${{ job.services.mariadb.ports[3306] }}
       run: mysql --user="root" --password="root" --database="n2station" -h"127.0.0.1" -P"$PORT" < "../setup.sql"
+    - name: Edit .env
+      env:
+          PORT: ${{ job.services.mariadb.ports[3306] }}
+      run: rm .env && echo 'DATABASE_URL="mysql://root:root@127.0.0.1:$PORT/n2station"' >> .env
     - name: Build
       run: cargo build --verbose --release
     - name: Upload artifacts

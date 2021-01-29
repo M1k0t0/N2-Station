@@ -26,6 +26,7 @@ Information needed to run the Backend is contained in `config.json`, which shoul
 
 ```json5
 {
+    "bind_address": "0.0.0.0",
     "pool_max_conns": 10, //Max connection to sql pool
     "server_port": 8080, //The port the server runs on
     "database_url":"<url>", //e.g. mariadb://root:qwer1234@127.0.0.1/n2station
@@ -86,12 +87,6 @@ CREATE TABLE IF NOT EXISTS `rooms`(
             `open` BOOL NOT NULL,
             `stream_token` CHAR(32) NULL
         );
-CREATE TABLE IF NOT EXISTS `tags`(
-            `id` INT UNSIGNED AUTO_INCREMENT,
-            `tag_type` VARCHAR(10) NOT NULL,
-            `creator_uuid` CHAR(32) NOT NULL,
-            PRIMARY KEY ( id )
-        );
 ```
 
 #### Setup Enviroment
@@ -119,6 +114,5 @@ Too lazy to write it. Just have a look at `routes.rs` and `enum Action` in `mode
 ## TODO
 
 - More appropriate error handling and rensponse
-- More elegant tag system
 - OAuth for authentication
 - Support streaming natively

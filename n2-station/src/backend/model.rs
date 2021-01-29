@@ -9,24 +9,9 @@ pub mod form {
 
     #[derive(Default, serde::Deserialize)]
     #[serde(default)]
-    pub struct TagInfo {
-        pub id: Option<u32>,
-        #[serde(rename(deserialize = "type"))]
-        pub tag_type: String,
-    }
-
-    #[derive(Default, serde::Deserialize)]
-    #[serde(default)]
     pub struct UserInfo {
         pub id: String,
         pub name: String,
-    }
-
-    #[derive(Default, serde::Deserialize)]
-    #[serde(default)]
-    pub struct TagCreation {
-        #[serde(rename(deserialize = "type"))]
-        pub tag_type: String,
     }
 
     #[derive(Default, serde::Deserialize)]
@@ -110,20 +95,6 @@ pub mod response {
         stream_token: Option<Uuid>,
     }
 
-    pub struct RawTag {
-        pub(super) id: u32,
-        pub(super) tag_type: String,
-        pub(super) creator_uuid: String,
-    }
-
-    #[derive(serde::Serialize)]
-    pub struct BakedTag {
-        id: u32,
-        #[serde(rename = "type")]
-        tag_type: String,
-        creator_uuid: Uuid,
-    }
-
     pub struct RawUser {
         pub(super) uuid: String,
         pub(super) username: String,
@@ -140,20 +111,16 @@ pub mod response {
         email: String,
     }
 
-    #[allow(dead_code)]
     #[derive(serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     #[serde(tag = "action")]
     pub enum Action {
         GetRoomList { rooms: Vec<BakedRoom> },
         SearchRoom { room: Option<BakedRoom> },
-        GetTagList { tags: Vec<BakedTag> },
-        SearchTag { tag: Option<BakedTag> },
         GetUserList { users: Vec<BakedUser> },
         SearchUser { user: Option<BakedUser> },
         GetUserRoomList { rooms: Vec<BakedRoom> },
         UserRoomDetail { room: Option<BakedRoom> },
-        CreateTag { status: i32 },
         CreateRoom { status: i32 },
         DeleteRoom { status: i32 },
         OpenRoom { stream_token: Uuid, status: i32 },
@@ -251,20 +218,10 @@ pub mod response {
             }
         }
     }
-
-    impl RawTag {
-        pub fn bake(&self) -> BakedTag {
-            BakedTag {
-                id: self.id,
-                tag_type: self.tag_type.clone(),
-                creator_uuid: Uuid::parse_str(self.creator_uuid.as_str()).unwrap(),
-            }
-        }
-    }
 }
 
 pub mod handler {
-    use super::response::{BakedRoom, BakedTag, BakedUser, RawRoom, RawTag, RawUser};
+    use super::response::{BakedRoom, BakedUser, RawRoom, RawUser};
     use anyhow::Result;
     use bcrypt::{hash, verify};
     use futures::{stream, StreamExt};
@@ -323,40 +280,6 @@ pub mod handler {
         }
     }
 
-    pub async fn get_all_tags(db_pool: &MySqlPool) -> Result<Vec<BakedTag>> {
-        Ok(query_as!(RawTag, r#"SELECT * FROM tags"#)
-            .fetch_all(db_pool)
-            .await?
-            .iter()
-            .map(RawTag::bake)
-            .collect())
-    }
-
-    pub async fn search_tag_by_id(db_pool: &MySqlPool, id: u32) -> Result<Option<BakedTag>> {
-        let query = query_as!(RawTag, r#"SELECT * FROM tags WHERE id = ?"#, id)
-            .fetch_optional(db_pool)
-            .await?;
-        if let Some(raw) = query {
-            Ok(Some(raw.bake()))
-        } else {
-            Ok(None)
-        }
-    }
-
-    pub async fn search_tag_by_type(
-        db_pool: &MySqlPool,
-        tag_type: &str,
-    ) -> Result<Option<BakedTag>> {
-        let query = query_as!(RawTag, r#"SELECT * FROM tags WHERE tag_type = ?"#, tag_type)
-            .fetch_optional(db_pool)
-            .await?;
-        if let Some(raw) = query {
-            Ok(Some(raw.bake()))
-        } else {
-            Ok(None)
-        }
-    }
-
     pub async fn get_all_users(db_pool: &MySqlPool) -> Result<Vec<BakedUser>> {
         Ok(query_as!(RawUser, r#"SELECT * FROM users"#)
             .fetch_all(db_pool)
@@ -387,17 +310,6 @@ pub mod handler {
         } else {
             Ok(None)
         }
-    }
-
-    pub async fn create_tag(db_pool: &MySqlPool, tag_type: &str, owner: &str) -> Result<()> {
-        query!(
-            r#"INSERT INTO tags (tag_type, creator_uuid) VALUES(?, ?)"#,
-            tag_type,
-            owner
-        )
-        .execute(db_pool)
-        .await?;
-        Ok(())
     }
 
     pub async fn create_room(

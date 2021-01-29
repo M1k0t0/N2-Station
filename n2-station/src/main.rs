@@ -21,6 +21,7 @@ struct Param {
 
 #[derive(serde::Deserialize, Clone)]
 struct ServerConfig {
+    bind_address: String,
     pool_max_conns: u32,
     server_port: u16,
     database_url: String,
@@ -55,6 +56,7 @@ async fn main() -> Result<()> {
     initialize_database(&mysql_pool).await?;
 
     let port = config.server_port;
+    let address = config.bind_address.clone();
 
     HttpServer::new(move || {
         App::new()
@@ -67,7 +69,7 @@ async fn main() -> Result<()> {
             .data(mysql_pool.clone())
             .configure(backend::init)
     })
-    .bind(("127.0.0.1", port))?
+    .bind((address, port))?
     .run()
     .await?;
 
@@ -99,19 +101,6 @@ async fn initialize_database(pool: &MySqlPool) -> Result<()> {
             `tag` VARCHAR(1024) NULL,
             `open` BOOL NOT NULL,
             `stream_token` CHAR(32) NULL
-        )
-        "#
-    )
-    .execute(pool)
-    .await?;
-
-    query!(
-        r#"
-        CREATE TABLE IF NOT EXISTS `tags`(
-            `id` INT UNSIGNED AUTO_INCREMENT,
-            `tag_type` VARCHAR(10) NOT NULL,
-            `creator_uuid` CHAR(32) NOT NULL,
-            PRIMARY KEY ( id )
         )
         "#
     )

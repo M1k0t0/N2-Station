@@ -1,5 +1,4 @@
 //!TODO: more appropriate error handling
-//!TODO: more elegant tag system
 
 use super::{form, handler, model::response::BakedRoom, Action};
 use actix_identity::Identity;
@@ -26,35 +25,6 @@ async fn get_room_info(
     let result = handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, false).await;
     if let Ok(room) = result {
         HttpResponse::Ok().json(Action::SearchRoom { room })
-    } else {
-        HttpResponse::InternalServerError().finish()
-    }
-}
-
-#[get("/api/info/tag")]
-async fn get_tag_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
-    let result = handler::get_all_tags(db_pool.get_ref()).await;
-    if let Ok(tags) = result {
-        HttpResponse::Ok().json(Action::GetTagList { tags })
-    } else {
-        HttpResponse::InternalServerError().finish()
-    }
-}
-
-#[post("/api/info/tag")]
-async fn get_tag_detail(
-    db_pool: web::Data<MySqlPool>,
-    tag: web::Form<form::TagInfo>,
-) -> HttpResponse {
-    let result = if !tag.id.is_none() {
-        handler::search_tag_by_id(db_pool.get_ref(), tag.id.unwrap()).await
-    } else if !tag.tag_type.is_empty() {
-        handler::search_tag_by_type(db_pool.get_ref(), &tag.tag_type).await
-    } else {
-        Ok(None)
-    };
-    if let Ok(tag) = result {
-        HttpResponse::Ok().json(Action::SearchTag { tag })
     } else {
         HttpResponse::InternalServerError().finish()
     }
@@ -119,37 +89,6 @@ async fn user_room_detail(
             HttpResponse::Ok().json(Action::UserRoomDetail { room })
         } else {
             HttpResponse::InternalServerError().finish()
-        }
-    } else {
-        HttpResponse::Forbidden().finish()
-    }
-}
-
-#[post("/api/user/createTag")]
-async fn create_tag(
-    db_pool: web::Data<MySqlPool>,
-    id: Identity,
-    creation: web::Form<form::TagCreation>,
-) -> HttpResponse {
-    if let Some(uuid) = id.identity() {
-        if creation.tag_type.is_empty() || creation.tag_type.len() > 10 {
-            HttpResponse::Ok().json(Action::CreateTag { status: -10 })
-        } else {
-            if handler::search_tag_by_type(db_pool.get_ref(), &creation.tag_type)
-                .await
-                .unwrap()
-                .is_some()
-            {
-                HttpResponse::Ok().json(Action::CreateTag { status: -1 })
-            } else {
-                if let Ok(_) =
-                    handler::create_tag(db_pool.get_ref(), &creation.tag_type, &uuid).await
-                {
-                    HttpResponse::Ok().json(Action::CreateTag { status: 0 })
-                } else {
-                    HttpResponse::Ok().json(Action::CreateTag { status: -2 })
-                }
-            }
         }
     } else {
         HttpResponse::Forbidden().finish()
@@ -450,13 +389,10 @@ async fn nginx_callback(
 pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(get_room_list)
         .service(get_room_info)
-        .service(get_tag_list)
-        .service(get_tag_detail)
         .service(get_user_list)
         .service(get_user_detail)
         .service(get_user_rooms)
         .service(user_room_detail)
-        .service(create_tag)
         .service(create_room)
         .service(delete_room)
         .service(open_room)

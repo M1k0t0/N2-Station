@@ -80,7 +80,7 @@ class User:
         self.db['rooms'].insert_one(data)
     
     def delete_room(self, data):
-        self.close_room()
+        self.close_room(data)
 
         del self.rooms[data["id"]]
         self.sync_data(['rooms'])

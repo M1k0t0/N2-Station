@@ -37,13 +37,21 @@ class User:
         self.index = ("id", self.id)
     
     '同步数据'
-    def sync_data(self):
-        data={}
-        for k,v in vars(self).items():
-            if k in self.syncignore:
-                continue
-            data[k]=v
-        data={ "$set": data }
+    def sync_data(self,endpoint=[]):
+        if len(endpoint)==0:
+            data={}
+            for k,v in vars(self).items():
+                if k in self.syncignore:
+                    continue
+                data[k]=v
+            data={ "$set": data }
+        else:
+            data={}
+            for k,v in vars(self).items():
+                if k in endpoint:
+                    data[k]=v
+            data={ "$set": data }
+
         self.db["users"].update_one({ "_id": self.id }, data)
 
     '生成Token'
@@ -62,9 +70,10 @@ class User:
 
         id=data["id"]
         del data["id"]
+        data["_id"]=id
 
         self.rooms[id]=data
-        self.sync_data()
+        self.sync_data(['rooms'])
 
         data["userID"]=self.id
 
@@ -74,23 +83,23 @@ class User:
         self.close_room()
 
         del self.rooms[data["id"]]
-        self.sync_data()
+        self.sync_data(['rooms'])
 
-        self.db['rooms'].delete_one({"id":data["id"]})
+        self.db['rooms'].delete_one({"_id":data["id"]})
     
     def open_room(self, data):
         self.rooms[data["id"]]["status"]="open"
-        self.streaming.append(id)
-        self.sync_data()
+        self.streaming.append(data["id"])
+        self.sync_data(['rooms','streaming'])
 
-        self.db['rooms'].update_one({"id":data["id"]},{ "$set": { "status": "open" }})
+        self.db['rooms'].update_one({"_id":data["id"]},{ "$set": { "status": "open" }})
     
     def close_room(self, data):
         self.rooms[data["id"]]["status"]="close"
         del self.streaming[self.streaming.index(data["id"])]
-        self.sync_data()
+        self.sync_data(['rooms','streaming'])
 
-        self.db['rooms'].update_one({"id":data["id"]},{ "$set": { "status": "close" }})
+        self.db['rooms'].update_one({"_id":data["id"]},{ "$set": { "status": "close" }})
 
 if __name__=="__main__":
     os._exit(0)

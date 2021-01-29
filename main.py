@@ -46,10 +46,31 @@ def index():
     }
 }
 '''
+@app.route('/api/user/rooms', methods=["GET"])
+def getUserRoomList():
+    token=request.cookies.get('Authorization')
+    if token==None:
+        return jsonify(utils.simple_reply("getUserRoomList",-10))
+    t=db["tokens"].find_one({"token": token})
+    if t == None:
+        return jsonify(utils.simple_reply("getUserRoomList",-1))
+    
+    try:
+        user=User(db,{"id":t["userID"]})
+    except BaseException as e:
+        return jsonify(utils.simple_reply("getUserRoomList",str(e)))
+
+    data={ "data":user.rooms, "action": "getUserRoomList", "status":0 }
+    #data["data"]["user"]={ "id": user.id, "user": user.user, "email": user.email}
+
+    return jsonify(data)
 
 @app.route('/api/user/createRoom', methods=["POST"])
 def createRoom():
-    content=json.loads(request.get_data())
+    try:
+        content=json.loads(request.get_data())
+    except:
+        return jsonify(utils.simple_reply("createRoom", -3))
 
     token=request.cookies.get('Authorization')
     if token==None:
@@ -60,7 +81,6 @@ def createRoom():
     
     try:
         user=User(db,{"id":t["userID"]})
-        user.sync_data()
     except BaseException as e:
         return jsonify(utils.simple_reply("createRoom",str(e)))
 
@@ -70,7 +90,11 @@ def createRoom():
         if data_key not in content:
             return jsonify(utils.simple_reply("createRoom", -10))
         data[data_key]=content[data_key]
-    
+    if data["id"] in user.rooms:
+        return jsonify(utils.simple_reply("createRoom", -1))
+    if len(user.rooms) >= user.limit["room_count"]:
+        return jsonify(utils.simple_reply("createRoom", -2))
+
     # 创建
     try:
         user.create_room(data)
@@ -80,7 +104,10 @@ def createRoom():
 
 @app.route('/api/user/deleteRoom', methods=["POST"])
 def deleteRoom():
-    content=json.loads(request.get_data())
+    try:
+        content=json.loads(request.get_data())
+    except:
+        return jsonify(utils.simple_reply("deleteRoom", -2))
 
     token=request.cookies.get('Authorization')
     if token==None:
@@ -109,7 +136,10 @@ def deleteRoom():
 
 @app.route('/api/user/openRoom', methods=["POST"])
 def openRoom():
-    content=json.loads(request.get_data())
+    try:
+        content=json.loads(request.get_data())
+    except:
+        return jsonify(utils.simple_reply("openRoom", -3))
 
     token=request.cookies.get('Authorization')
     if token==None:
@@ -117,7 +147,7 @@ def openRoom():
     t=db["tokens"].find_one({"token": token})
     if t == None:
         return jsonify(utils.simple_reply("openRoom",-3))
-    
+
     try:
         user=User(db,{"id":t["userID"]})
     except BaseException as e:
@@ -139,12 +169,16 @@ def openRoom():
     try:
         user.open_room(content)
         return jsonify(utils.simple_reply("openRoom", 0))
-    except:
-        return jsonify(utils.simple_reply("openRoom", -3))
+    except BaseException as e:
+        return jsonify(utils.simple_reply("openRoom", -3, e))
+    
 
 @app.route('/api/user/closeRoom', methods=["POST"])
 def closeRoom():
-    content=json.loads(request.get_data())
+    try:
+        content=json.loads(request.get_data())
+    except:
+        return jsonify(utils.simple_reply("closeRoom", -2))
 
     token=request.cookies.get('Authorization')
     if token==None:
@@ -190,6 +224,11 @@ def closeRoom():
         },
         “流名称”: { ... },
     },
+    "streaming": {
+        "流名称": {
+            "time": ""
+        }
+    }
     "limit": {
         "room_count": 5,
         "stream_count": 1

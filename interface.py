@@ -7,7 +7,7 @@ class User:
     syncignore=["db","index","id"]
     def __init__(self, db, data):
         self.db=db
-        self.index=utils.get_input(data, ["id","user","email"])
+        self.index=utils.get_input(data, ["id","name","email"])
         if self.index[0]==None:
             raise RuntimeError('-10')
         self.update_data(self.index[0], self.index[1])
@@ -26,7 +26,7 @@ class User:
             raise RuntimeError('-1')
 
         self.id=user["_id"]
-        self.user=user["user"]
+        self.name=user["name"]
         self.email=user["email"]
         self.password=user["password"]
         self.rooms=user["rooms"]
@@ -65,7 +65,7 @@ class User:
         return t
 
     def create_room(self, data):
-        data["time"]=int(time.time())
+        data["time"]={ "createTime": int(time.time()), "openTime": -1, "stopTime": -1 }
         data["status"]="close"
 
         id=data["id"]
@@ -89,6 +89,7 @@ class User:
     
     def open_room(self, data):
         self.rooms[data["id"]]["status"]="open"
+        self.rooms[data["id"]]["time"]["openTime"]=int(time.time())
         self.streaming.append(data["id"])
         self.sync_data(['rooms','streaming'])
 
@@ -96,6 +97,7 @@ class User:
     
     def close_room(self, data):
         self.rooms[data["id"]]["status"]="close"
+        self.rooms[data["id"]]["time"]["stopTime"]=int(time.time())
         del self.streaming[self.streaming.index(data["id"])]
         self.sync_data(['rooms','streaming'])
 

@@ -35,5 +35,13 @@ def get_input(d,l=None):
 def get_date_after(days):
     return datetime.datetime.today() + datetime.timedelta(days=int(days))
 
+def delete_key(data, keyList):
+    for i in keyList:
+        try:
+            del data[i]
+        except:
+            pass
+    return data
+
 if __name__=="__main__":
     os._exit(0)

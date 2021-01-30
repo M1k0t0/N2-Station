@@ -1,4 +1,6 @@
 import pymongo, os, sys, uuid, utils
+from flask import jsonify
+from interface import User
 
 LOG_INFO=0
 LOG_WARN=1
@@ -26,7 +28,7 @@ def setup_db(db):
 def add_user_to_db(db, data):
     if "id" not in data:
         data["_id"]=str(uuid.uuid4()).replace('-','')
-    if "user" not in data:
+    if "name" not in data:
         data["name"]=str(uuid.uuid4())[0:8]
     if "password" not in data:
         data["password"]=str(uuid.uuid4())[0:8]
@@ -41,7 +43,7 @@ def add_user_to_db(db, data):
     
     if db["users"].find_one({"email":data["email"]}) != None:
         return (-1, RETURN_CODE)
-    if db["users"].find_one({"user":data["user"]}) != None:
+    if db["users"].find_one({"name":data["name"]}) != None:
         return (-2, RETURN_CODE)
     
     #if 密码强度不合格:   WIP
@@ -53,7 +55,7 @@ def add_user_to_db(db, data):
     return (data["_id"], RETURN_DATA)
 
 def delete_user_from_db(db, data):
-    method, data = utils.get_input(data,["id","user","email"])
+    method, data = utils.get_input(data,["id","name","email"])
 
     method=method.replace("id","_id",1)
 
@@ -63,6 +65,20 @@ def delete_user_from_db(db, data):
     db["users"].delete_one({method:data})
 
     return (0,RETURN_DATA)
+
+def get_user_by_token(db,token):
+    if token==None:
+        raise RuntimeError('-10')
+    t=db["tokens"].find_one({"token": token})
+    if t == None:
+        raise RuntimeError('-11')
+    
+    try:
+        user=User(db,{"id":t["userID"]})
+    except BaseException as e:
+        raise RuntimeError(str(e))
+    
+    return user
 
 if __name__=="__main__":
     os._exit(0)

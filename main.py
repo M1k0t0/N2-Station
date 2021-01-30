@@ -33,6 +33,61 @@ tokens=db['tokens']
 def index():
     return 'Welcome to N2Backend '+BACKEND_VERSION
 
+@app.route('/api/info/room', methods=["GET","POST"])
+def getRoomList():
+    if request.method=="GET":
+        roomList={}
+        tmp=rooms.find()
+        for i in tmp:
+            roomList[str(i["_id"])]=i
+            try:
+                user=User(db,{"id": i["userID"]})
+            except:
+                return jsonify(utils.simple_reply("getRoomList",-11))
+            roomList[str(i["_id"])]["user"]={ "id": user.id, "name": user.name, "email": user.email }
+            del roomList[str(i["_id"])]["userID"]
+            del roomList[str(i["_id"])]["_id"]
+        return jsonify({ "data": roomList, "action": "getRoomList", "status": 0 })
+    elif request.method=="POST":
+        try:
+            content=json.loads(request.get_data())
+        except:
+            return jsonify(utils.simple_reply("searchRoom", -11))
+        if "id" not in content:
+            return jsonify(utils.simple_reply("searchRoom", -10))
+        i=rooms.find_one({ "_id": content["id"] })
+        if i==None:
+            return jsonify(utils.simple_reply("searchRoom",-1))
+        try:
+            user=User(db,{"id": i["userID"]})
+        except:
+            return jsonify(utils.simple_reply("searchRoom",-11))
+        room=utils.delete_key(i,["_id","userID"])
+        room["user"]={ "id": user.id, "name": user.name, "email": user.email }
+        room["action"]="searchRoom"
+        room["status"]=0
+        return jsonify(room)
+
+@app.route('/api/info/user', methods=["GET","POST"])
+def getUserList():
+    if request.method=="GET":
+        userList={}
+        for i in users.find():
+            userList[str(i["_id"])]={ "id": str(i["_id"]), "name": i["name"], "email": i["email"] }
+        return jsonify({ "data": userList, "action": "getUserList", "status": 0 })
+    elif request.method=="POST":
+        try:
+            content=json.loads(request.get_data())
+        except:
+            return jsonify(utils.simple_reply("searchUser", -11))
+        if "id" not in content and "name" not in content and "email" not in content:
+            return jsonify(utils.simple_reply("searchUser", -10))
+        try:
+            user=User(db, content)
+        except BaseException as e:
+            return jsonify(utils.simple_reply("searchUser",str(e)))
+        return jsonify({ "id": user.id, "name": user.name, "email": user.email, "action": "searchUser", "status": 0 })
+
 '''
 “流名称”:{
     “title”: “房间标题”,
@@ -48,20 +103,13 @@ def index():
 '''
 @app.route('/api/user/rooms', methods=["GET"])
 def getUserRoomList():
-    token=request.cookies.get('Authorization')
-    if token==None:
-        return jsonify(utils.simple_reply("getUserRoomList",-10))
-    t=db["tokens"].find_one({"token": token})
-    if t == None:
-        return jsonify(utils.simple_reply("getUserRoomList",-1))
-    
     try:
-        user=User(db,{"id":t["userID"]})
+        user=process.get_user_by_token(db,request.cookies.get('Authorization'))
     except BaseException as e:
         return jsonify(utils.simple_reply("getUserRoomList",str(e)))
 
     data={ "data":user.rooms, "action": "getUserRoomList", "status":0 }
-    #data["data"]["user"]={ "id": user.id, "user": user.user, "email": user.email}
+    #data["data"]["user"]={ "id": user.id, "user": user.name, "email": user.email}
 
     return jsonify(data)
 
@@ -70,17 +118,10 @@ def createRoom():
     try:
         content=json.loads(request.get_data())
     except:
-        return jsonify(utils.simple_reply("createRoom", -3))
+        return jsonify(utils.simple_reply("createRoom", -11))
 
-    token=request.cookies.get('Authorization')
-    if token==None:
-        return jsonify(utils.simple_reply("createRoom",-10))
-    t=db["tokens"].find_one({"token": token})
-    if t == None:
-        return jsonify(utils.simple_reply("createRoom",-3))
-    
     try:
-        user=User(db,{"id":t["userID"]})
+        user=process.get_user_by_token(db,request.cookies.get('Authorization'))
     except BaseException as e:
         return jsonify(utils.simple_reply("createRoom",str(e)))
 
@@ -107,17 +148,10 @@ def deleteRoom():
     try:
         content=json.loads(request.get_data())
     except:
-        return jsonify(utils.simple_reply("deleteRoom", -2))
+        return jsonify(utils.simple_reply("deleteRoom", -11))
 
-    token=request.cookies.get('Authorization')
-    if token==None:
-        return jsonify(utils.simple_reply("deleteRoom",-10))
-    t=db["tokens"].find_one({"token": token})
-    if t == None:
-        return jsonify(utils.simple_reply("deleteRoom",-2))
-    
     try:
-        user=User(db,{"id":t["userID"]})
+        user=process.get_user_by_token(db,request.cookies.get('Authorization'))
     except BaseException as e:
         return jsonify(utils.simple_reply("deleteRoom",str(e)))
 
@@ -139,17 +173,10 @@ def openRoom():
     try:
         content=json.loads(request.get_data())
     except:
-        return jsonify(utils.simple_reply("openRoom", -3))
-
-    token=request.cookies.get('Authorization')
-    if token==None:
-        return jsonify(utils.simple_reply("openRoom",-10))
-    t=db["tokens"].find_one({"token": token})
-    if t == None:
-        return jsonify(utils.simple_reply("openRoom",-3))
+        return jsonify(utils.simple_reply("openRoom", -11))
 
     try:
-        user=User(db,{"id":t["userID"]})
+        user=process.get_user_by_token(db,request.cookies.get('Authorization'))
     except BaseException as e:
         return jsonify(utils.simple_reply("openRoom",str(e)))
 
@@ -180,15 +207,8 @@ def closeRoom():
     except:
         return jsonify(utils.simple_reply("closeRoom", -2))
 
-    token=request.cookies.get('Authorization')
-    if token==None:
-        return jsonify(utils.simple_reply("closeRoom",-10))
-    t=db["tokens"].find_one({"token": token})
-    if t == None:
-        return jsonify(utils.simple_reply("closeRoom",-2))
-    
     try:
-        user=User(db,{"id":t["userID"]})
+        user=process.get_user_by_token(db,request.cookies.get('Authorization'))
     except BaseException as e:
         return jsonify(utils.simple_reply("closeRoom",str(e)))
 
@@ -241,32 +261,6 @@ def closeRoom():
     }
 }
 '''
-@app.route('/api/info/user', methods=["GET"])
-def getUserList():
-    userList={}
-    for i in users.find():
-        userList[str(i["_id"])]={ "id": str(i["_id"]), "user": i["user"], "email": i["email"] }
-    return jsonify({ "data": userList, "action": "getUserList" })
-
-@app.route('/api/user/debug/<func>')
-def debug(func):
-    try:
-        content=json.loads(request.get_data())
-    except:
-        return jsonify(utils.simple_reply("debug", -11))
-
-    if func=="addUser":
-        try:
-            process.add_user_to_db(db,{})
-        except BaseException as e:
-            return str(e)
-        return "0"
-    if func=="delUser":
-        try:
-            data, code = process.delete_user_from_db(db,content)
-        except BaseException as e:
-            return str(e)
-        return data
 
 @app.route('/api/auth/register', methods=["POST"])
 def register():
@@ -274,12 +268,12 @@ def register():
         content=json.loads(request.get_data())
     except:
         return jsonify(utils.simple_reply("register", -11))
-    if "user" not in content or "email" not in content or "pass" not in content:
+    if "name" not in content or "email" not in content or "pass" not in content:
         return jsonify(utils.simple_reply("register", -10))
     try:
         data, code=process.add_user_to_db(db,{
             "email": content["email"], 
-            "user": content["user"], 
+            "name": content["name"], 
             "password": content["pass"], 
             "rooms": {}, 
             "streaming":[],
@@ -396,6 +390,25 @@ def verify():
             return jsonify(utils.simple_reply("verify",0))
     return jsonify(utils.simple_reply("verify",-1)), 403
 
+@app.route('/api/user/debug/<func>')
+def debug(func):
+    try:
+        content=json.loads(request.get_data())
+    except:
+        return jsonify(utils.simple_reply("debug", -11))
+
+    if func=="addUser":
+        try:
+            process.add_user_to_db(db,{})
+        except BaseException as e:
+            return str(e)
+        return "0"
+    if func=="delUser":
+        try:
+            data, code = process.delete_user_from_db(db,content)
+        except BaseException as e:
+            return str(e)
+        return data
 
 if __name__ == '__main__':
     app.debug = False

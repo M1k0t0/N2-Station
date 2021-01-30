@@ -1,4 +1,4 @@
-import os, uuid, hashlib, time, bcrypt, datetime, time_uuid
+import os, uuid, hashlib, time, bcrypt, datetime, time_uuid, json,sys
 
 code2type=["INFO","WARN","ERROR","UNDEFINED"]
 
@@ -42,6 +42,10 @@ def delete_key(data, keyList):
         except:
             pass
     return data
+
+def read_json_file(name):
+    with open(sys.path[0]+'/'+name,'r') as f:
+        return json.load(f)
 
 if __name__=="__main__":
     os._exit(0)

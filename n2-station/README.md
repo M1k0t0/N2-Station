@@ -20,6 +20,8 @@ rtmp {
 }
 ```
 
+Then the user should have their room created, opened and push to `/room?token=` where the token goes after `=`
+
 ## Configuration
 
 Information needed to run the Backend is contained in `config.json`, which should be sharing the same folder with the binary by default. You can change the configuration with `--config <path>` argument.

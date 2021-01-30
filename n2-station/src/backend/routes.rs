@@ -6,8 +6,17 @@ use super::{form, handler, Action};
 use actix_identity::Identity;
 use actix_web::{get, post, web, HttpResponse};
 use form::{ChangePassword, LoginInfo, RegInfo};
+use lazy_static::lazy_static;
+use regex::Regex;
 use sqlx::MySqlPool;
 use uuid::Uuid;
+lazy_static! {
+    static ref ID_REGEX: Regex = Regex::new("^[A-Za-z0-9_-]{4,16}$").unwrap();
+    static ref EMAIL_REGEX: Regex = Regex::new("^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$").unwrap();
+    static ref PASSWD_REGEX: Regex = Regex::new("^(?![0-9]+$)(?![a-zA-Z]+$)(?![0-9a-zA-Z]+$)(?![0-9\\W]+$)(?![a-zA-Z\\W]+$)[0-9A-Za-z\\W]{8,16}$").unwrap();
+    static ref TITLE_REGEX: Regex = Regex::new("^.{1,16}$").unwrap();
+    static ref DESC_REGEX: Regex = Regex::new("^.{1,20}$").unwrap();
+}
 
 #[get("/api/info/room")]
 async fn get_room_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
@@ -116,12 +125,9 @@ async fn create_room(
                 stream_token: Uuid::nil(),
                 status: -2,
             })
-        } else if room.id.is_empty()
-            || room.title.is_empty()
-            || room.desc.is_empty()
-            || room.id.len() > 16
-            || room.title.len() > 16
-            || room.desc.len() > 20
+        } else if !ID_REGEX.is_match(&room.id)
+            || !TITLE_REGEX.is_match(&room.title)
+            || !DESC_REGEX.is_match(&room.desc)
             || room.tag.iter().any(|s| s.contains(';'))
         {
             HttpResponse::Ok().json(Action::CreateRoom { status: -10 })
@@ -257,12 +263,9 @@ async fn close_room(
 
 #[post("/api/auth/register")]
 async fn register(db_pool: web::Data<MySqlPool>, user: web::Form<RegInfo>) -> HttpResponse {
-    if user.email.is_empty()
-        || user.pass.is_empty()
-        || user.user.is_empty()
-        || user.user.len() > 16
-        || user.email.len() > 30
-        || user.pass.len() > 16
+    if !PASSWD_REGEX.is_match(&user.pass)
+        || !EMAIL_REGEX.is_match(&user.email)
+        || !ID_REGEX.is_match(&user.user)
     {
         HttpResponse::Ok().json(Action::Register {
             status: -10,
@@ -295,8 +298,7 @@ async fn login(
     id: Identity,
     user: web::Form<LoginInfo>,
 ) -> HttpResponse {
-    if user.email.is_empty() || user.key.is_empty() || user.email.len() > 30 || user.key.len() > 16
-    {
+    if !EMAIL_REGEX.is_match(&user.email) || !PASSWD_REGEX.is_match(&user.key) {
         HttpResponse::Ok().json(Action::GetToken { status: -10 })
     } else {
         if let Ok(result) =
@@ -327,11 +329,7 @@ async fn change_password(
     passwd: web::Form<ChangePassword>,
 ) -> HttpResponse {
     if let Some(uuid) = id.identity() {
-        if passwd.new_pass.is_empty()
-            || passwd.old_pass.is_empty()
-            || passwd.new_pass.len() > 16
-            || passwd.old_pass.len() > 16
-        {
+        if !PASSWD_REGEX.is_match(&passwd.old_pass) || !PASSWD_REGEX.is_match(&passwd.new_pass) {
             HttpResponse::Ok().json(Action::ChangePassword { status: -10 })
         } else {
             if let Ok(opt) = handler::check_password_uuid(
@@ -373,7 +371,7 @@ async fn nginx_callback(
     db_pool: web::Data<MySqlPool>,
     data: web::Query<NginxRtmpForm>,
 ) -> HttpResponse {
-    if data.name.is_empty() || data.token.is_nil() || data.name.len() > 16 {
+    if !ID_REGEX.is_match(&data.name) || data.token.is_nil() {
         HttpResponse::Forbidden().body("Illegal Parameters!")
     } else {
         if let Ok(raw) = handler::raw_room_by_stream_name(db_pool.get_ref(), &data.name).await {

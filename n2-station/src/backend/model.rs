@@ -263,17 +263,19 @@ pub mod handler {
     }
 
     pub async fn raw_rooms_for_user(user: &str) -> Result<u64> {
-        let wrapper = RBATIS.new_wrapper().eq("owner_uuid", user);
         Ok(RBATIS
-            .exec_prepare_wrapper("", &wrapper)
+            .exec_prepare(
+                "",
+                r#"SELECT * FROM rooms WHERE owner_uuid = ?"#,
+                &vec![json!(user)],
+            )
             .await?
             .rows_affected)
     }
 
     pub async fn raw_open_rooms() -> Result<u64> {
-        let wrapper = RBATIS.new_wrapper().eq("open", true);
         Ok(RBATIS
-            .exec_prepare_wrapper("", &wrapper)
+            .exec("", "SELECT * FROM rooms WHERE open = TRUE")
             .await?
             .rows_affected)
     }
@@ -348,9 +350,12 @@ pub mod handler {
     }
 
     pub async fn exists_room(stream_id: &str) -> bool {
-        let wrapper = RBATIS.new_wrapper().eq("stream_id", stream_id);
         RBATIS
-            .exec_prepare_wrapper("", &wrapper)
+            .exec_prepare(
+                "",
+                "SELECT * FROM rooms WHERE stream_id = ?",
+                &vec![json!(stream_id)],
+            )
             .await
             .unwrap()
             .rows_affected
@@ -358,13 +363,12 @@ pub mod handler {
     }
 
     pub async fn exists_user(username: &str, email: &str) -> bool {
-        let wrapper = RBATIS
-            .new_wrapper()
-            .eq("username", username)
-            .or()
-            .eq("email", email);
         RBATIS
-            .exec_prepare_wrapper("", &wrapper)
+            .exec_prepare(
+                "",
+                "SELECT * FROM users WHERE username = ? OR email = ?",
+                &vec![json!(username), json!(email)],
+            )
             .await
             .unwrap()
             .rows_affected

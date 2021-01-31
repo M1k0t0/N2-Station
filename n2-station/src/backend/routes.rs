@@ -5,10 +5,10 @@ use crate::ServerConfig;
 use super::{form, handler, Action};
 use actix_identity::Identity;
 use actix_web::{get, post, web, HttpResponse};
+use fancy_regex::Regex;
 use form::{ChangePassword, LoginInfo, RegInfo};
 use lazy_static::lazy_static;
 use rbatis::rbatis::Rbatis;
-use regex::Regex;
 use uuid::Uuid;
 lazy_static! {
     static ref ID_REGEX: Regex = Regex::new("^[A-Za-z0-9_-]{4,16}$").unwrap();
@@ -110,9 +110,9 @@ async fn create_room(
                 stream_token: Uuid::nil(),
                 status: -2,
             })
-        } else if !ID_REGEX.is_match(&room.id)
-            || !TITLE_REGEX.is_match(&room.title)
-            || !DESC_REGEX.is_match(&room.desc)
+        } else if !ID_REGEX.is_match(&room.id).unwrap()
+            || !TITLE_REGEX.is_match(&room.title).unwrap()
+            || !DESC_REGEX.is_match(&room.desc).unwrap()
             || room.tag.len() > 10
             || room.tag.iter().any(|s| s.contains(';'))
         {
@@ -221,9 +221,10 @@ async fn close_room(id: Identity, room: web::Form<form::RoomId>) -> HttpResponse
 
 #[post("/api/auth/register")]
 async fn register(user: web::Form<RegInfo>) -> HttpResponse {
-    if !PASSWD_REGEX.is_match(&user.pass)
-        || !EMAIL_REGEX.is_match(&user.email)
-        || !ID_REGEX.is_match(&user.user)
+    if user.pass.len() > 16
+        || !PASSWD_REGEX.is_match(&user.pass).unwrap()
+        || !EMAIL_REGEX.is_match(&user.email).unwrap()
+        || !ID_REGEX.is_match(&user.user).unwrap()
     {
         HttpResponse::Ok().json(Action::Register {
             status: -10,
@@ -250,7 +251,10 @@ async fn register(user: web::Form<RegInfo>) -> HttpResponse {
 
 #[post("/api/auth/getToken")]
 async fn login(id: Identity, user: web::Form<LoginInfo>) -> HttpResponse {
-    if !EMAIL_REGEX.is_match(&user.email) || !PASSWD_REGEX.is_match(&user.key) {
+    if user.key.len() > 16
+        || !EMAIL_REGEX.is_match(&user.email).unwrap()
+        || !PASSWD_REGEX.is_match(&user.key).unwrap()
+    {
         HttpResponse::Ok().json(Action::GetToken { status: -10 })
     } else {
         if let Ok(result) = handler::check_password_email(&user.email, &user.key).await {
@@ -275,7 +279,11 @@ async fn logout(id: Identity) -> HttpResponse {
 #[post("/api/auth/changePassword")]
 async fn change_password(id: Identity, passwd: web::Form<ChangePassword>) -> HttpResponse {
     if let Some(uuid) = id.identity() {
-        if !PASSWD_REGEX.is_match(&passwd.old_pass) || !PASSWD_REGEX.is_match(&passwd.new_pass) {
+        if passwd.old_pass.len() > 16
+            || passwd.new_pass.len() > 16
+            || !PASSWD_REGEX.is_match(&passwd.old_pass).unwrap()
+            || !PASSWD_REGEX.is_match(&passwd.new_pass).unwrap()
+        {
             HttpResponse::Ok().json(Action::ChangePassword { status: -10 })
         } else {
             if let Ok(opt) =
@@ -309,7 +317,7 @@ struct NginxRtmpForm {
 
 #[get("/callback/nginx")]
 async fn nginx_callback(data: web::Query<NginxRtmpForm>) -> HttpResponse {
-    if !ID_REGEX.is_match(&data.name) || data.token.is_nil() {
+    if !ID_REGEX.is_match(&data.name).unwrap() || data.token.is_nil() {
         HttpResponse::Forbidden().body("Illegal Parameters!")
     } else {
         if let Ok(raw) = handler::raw_room_by_stream_name(&data.name).await {

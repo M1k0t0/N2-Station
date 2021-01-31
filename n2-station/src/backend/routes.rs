@@ -7,8 +7,8 @@ use actix_identity::Identity;
 use actix_web::{get, post, web, HttpResponse};
 use form::{ChangePassword, LoginInfo, RegInfo};
 use lazy_static::lazy_static;
+use rbatis::rbatis::Rbatis;
 use regex::Regex;
-use sqlx::MySqlPool;
 use uuid::Uuid;
 lazy_static! {
     static ref ID_REGEX: Regex = Regex::new("^[A-Za-z0-9_-]{4,16}$").unwrap();
@@ -16,11 +16,13 @@ lazy_static! {
     static ref PASSWD_REGEX: Regex = Regex::new("^(?![0-9]+$)(?![a-zA-Z]+$)(?![0-9a-zA-Z]+$)(?![0-9\\W]+$)(?![a-zA-Z\\W]+$)[0-9A-Za-z\\W]{8,16}$").unwrap();
     static ref TITLE_REGEX: Regex = Regex::new("^.{1,16}$").unwrap();
     static ref DESC_REGEX: Regex = Regex::new("^.{1,20}$").unwrap();
+
+    pub static ref RBATIS: Rbatis = Rbatis::new();
 }
 
 #[get("/api/info/room")]
-async fn get_room_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
-    let result = handler::get_all_rooms(db_pool.get_ref()).await;
+async fn get_room_list() -> HttpResponse {
+    let result = handler::get_all_rooms().await;
     if let Ok(rooms) = result {
         HttpResponse::Ok().json(Action::GetRoomList { rooms })
     } else {
@@ -29,11 +31,8 @@ async fn get_room_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
 }
 
 #[post("/api/info/room")]
-async fn get_room_info(
-    db_pool: web::Data<MySqlPool>,
-    room: web::Form<form::RoomInfo>,
-) -> HttpResponse {
-    let result = handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, "", false).await;
+async fn get_room_info(room: web::Form<form::RoomInfo>) -> HttpResponse {
+    let result = handler::search_room_by_stream_name(&room.id, "", false).await;
     if let Ok(room) = result {
         HttpResponse::Ok().json(Action::SearchRoom { room })
     } else {
@@ -42,8 +41,8 @@ async fn get_room_info(
 }
 
 #[get("/api/info/user")]
-async fn get_user_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
-    let result = handler::get_all_users(db_pool.get_ref()).await;
+async fn get_user_list() -> HttpResponse {
+    let result = handler::get_all_users().await;
     if let Ok(users) = result {
         HttpResponse::Ok().json(Action::GetUserList { users })
     } else {
@@ -52,18 +51,15 @@ async fn get_user_list(db_pool: web::Data<MySqlPool>) -> HttpResponse {
 }
 
 #[post("/api/info/user")]
-async fn get_user_detail(
-    db_pool: web::Data<MySqlPool>,
-    user: web::Form<form::UserInfo>,
-) -> HttpResponse {
+async fn get_user_detail(user: web::Form<form::UserInfo>) -> HttpResponse {
     let result = if !user.id.is_empty() {
         if let Ok(uuid) = Uuid::parse_str(user.id.as_str()) {
-            handler::search_user_by_uuid(db_pool.get_ref(), uuid).await
+            handler::search_user_by_uuid(uuid).await
         } else {
             return HttpResponse::BadRequest().finish();
         }
     } else if !user.name.is_empty() {
-        handler::search_user_by_name(db_pool.get_ref(), &user.name).await
+        handler::search_user_by_name(&user.name).await
     } else {
         Ok(None)
     };
@@ -75,9 +71,9 @@ async fn get_user_detail(
 }
 
 #[get("/api/user/room")]
-async fn get_user_rooms(db_pool: web::Data<MySqlPool>, id: Identity) -> HttpResponse {
+async fn get_user_rooms(id: Identity) -> HttpResponse {
     if let Some(uuid) = id.identity() {
-        let result = handler::search_rooms_by_owner(db_pool.get_ref(), &uuid).await;
+        let result = handler::search_rooms_by_owner(&uuid).await;
         if let Ok(rooms) = result {
             HttpResponse::Ok().json(Action::GetUserRoomList { rooms })
         } else {
@@ -89,14 +85,9 @@ async fn get_user_rooms(db_pool: web::Data<MySqlPool>, id: Identity) -> HttpResp
 }
 
 #[post("/api/user/room")]
-async fn user_room_detail(
-    db_pool: web::Data<MySqlPool>,
-    id: Identity,
-    room: web::Form<form::RoomId>,
-) -> HttpResponse {
+async fn user_room_detail(id: Identity, room: web::Form<form::RoomId>) -> HttpResponse {
     if let Some(uuid) = id.identity() {
-        let result =
-            handler::search_room_by_stream_name(db_pool.get_ref(), &room.id, &uuid, true).await;
+        let result = handler::search_room_by_stream_name(&room.id, &uuid, true).await;
         if let Ok(room) = result {
             HttpResponse::Ok().json(Action::UserRoomDetail { room })
         } else {
@@ -109,18 +100,12 @@ async fn user_room_detail(
 
 #[post("/api/user/createRoom")]
 async fn create_room(
-    db_pool: web::Data<MySqlPool>,
     config: web::Data<ServerConfig>,
     id: Identity,
     room: web::Form<form::RoomCreation>,
 ) -> HttpResponse {
     if let Some(uuid) = id.identity() {
-        if handler::raw_rooms_for_user(db_pool.get_ref(), &uuid)
-            .await
-            .unwrap()
-            .len()
-            > config.room_creation_limit
-        {
+        if handler::raw_rooms_for_user(&uuid).await.unwrap() > config.room_creation_limit {
             HttpResponse::Ok().json(Action::OpenRoom {
                 stream_token: Uuid::nil(),
                 status: -2,
@@ -128,22 +113,17 @@ async fn create_room(
         } else if !ID_REGEX.is_match(&room.id)
             || !TITLE_REGEX.is_match(&room.title)
             || !DESC_REGEX.is_match(&room.desc)
+            || room.tag.len() > 10
             || room.tag.iter().any(|s| s.contains(';'))
         {
             HttpResponse::Ok().json(Action::CreateRoom { status: -10 })
         } else {
-            if handler::exists_room(db_pool.get_ref(), &room.id).await {
+            if handler::exists_room(&room.id).await {
                 HttpResponse::Ok().json(Action::CreateRoom { status: -1 })
             } else {
-                if let Ok(_) = handler::create_room(
-                    db_pool.get_ref(),
-                    &uuid,
-                    &room.id,
-                    &room.title,
-                    &room.desc,
-                    room.tag.clone(),
-                )
-                .await
+                if let Ok(_) =
+                    handler::create_room(&uuid, &room.id, &room.title, &room.desc, room.tag.clone())
+                        .await
                 {
                     HttpResponse::Ok().json(Action::CreateRoom { status: 0 })
                 } else {
@@ -157,16 +137,12 @@ async fn create_room(
 }
 
 #[post("/api/user/deleteRoom")]
-async fn delete_room(
-    db_pool: web::Data<MySqlPool>,
-    id: Identity,
-    room: web::Form<form::RoomId>,
-) -> HttpResponse {
+async fn delete_room(id: Identity, room: web::Form<form::RoomId>) -> HttpResponse {
     if let Some(uuid) = id.identity() {
         if room.id.is_empty() {
             HttpResponse::Ok().json(Action::DeleteRoom { status: -10 })
         } else {
-            if let Ok(affected) = handler::delete_room(db_pool.get_ref(), &room.id, &uuid).await {
+            if let Ok(affected) = handler::delete_room(&room.id, &uuid).await {
                 if affected > 0 {
                     HttpResponse::Ok().json(Action::DeleteRoom { status: 0 })
                 } else {
@@ -183,18 +159,12 @@ async fn delete_room(
 
 #[post("/api/user/openRoom")]
 async fn open_room(
-    db_pool: web::Data<MySqlPool>,
     config: web::Data<ServerConfig>,
     id: Identity,
     room: web::Form<form::RoomId>,
 ) -> HttpResponse {
     if let Some(uuid) = id.identity() {
-        if handler::raw_open_rooms(db_pool.get_ref())
-            .await
-            .unwrap()
-            .len()
-            > config.room_open_limit
-        {
+        if handler::raw_open_rooms().await.unwrap() > config.room_open_limit {
             HttpResponse::Ok().json(Action::OpenRoom {
                 stream_token: Uuid::nil(),
                 status: -2,
@@ -205,13 +175,9 @@ async fn open_room(
                 status: -10,
             })
         } else {
-            if let Ok(affected) =
-                handler::set_room_status(db_pool.get_ref(), &room.id, true, &uuid).await
-            {
+            if let Ok(affected) = handler::set_room_status(&room.id, true, &uuid).await {
                 if affected > 0 {
-                    let uuid = handler::assign_stream_token(db_pool.get_ref(), &room.id)
-                        .await
-                        .unwrap();
+                    let uuid = handler::assign_stream_token(&room.id).await.unwrap();
                     HttpResponse::Ok().json(Action::OpenRoom {
                         stream_token: uuid,
                         status: 0,
@@ -232,22 +198,14 @@ async fn open_room(
 }
 
 #[post("/api/user/closeRoom")]
-async fn close_room(
-    db_pool: web::Data<MySqlPool>,
-    id: Identity,
-    room: web::Form<form::RoomId>,
-) -> HttpResponse {
+async fn close_room(id: Identity, room: web::Form<form::RoomId>) -> HttpResponse {
     if let Some(uuid) = id.identity() {
         if room.id.is_empty() {
             HttpResponse::Ok().json(Action::CloseRoom { status: -10 })
         } else {
-            if let Ok(affected) =
-                handler::set_room_status(db_pool.get_ref(), &room.id, false, &uuid).await
-            {
+            if let Ok(affected) = handler::set_room_status(&room.id, false, &uuid).await {
                 if affected > 0 {
-                    handler::unset_stream_token(db_pool.get_ref(), &room.id)
-                        .await
-                        .unwrap();
+                    handler::unset_stream_token(&room.id).await.unwrap();
                     HttpResponse::Ok().json(Action::CloseRoom { status: 0 })
                 } else {
                     HttpResponse::Ok().json(Action::CloseRoom { status: -1 })
@@ -262,7 +220,7 @@ async fn close_room(
 }
 
 #[post("/api/auth/register")]
-async fn register(db_pool: web::Data<MySqlPool>, user: web::Form<RegInfo>) -> HttpResponse {
+async fn register(user: web::Form<RegInfo>) -> HttpResponse {
     if !PASSWD_REGEX.is_match(&user.pass)
         || !EMAIL_REGEX.is_match(&user.email)
         || !ID_REGEX.is_match(&user.user)
@@ -272,15 +230,13 @@ async fn register(db_pool: web::Data<MySqlPool>, user: web::Form<RegInfo>) -> Ht
             id: Uuid::nil(),
         })
     } else {
-        if handler::exists_user(db_pool.get_ref(), &user.user, &user.email).await {
+        if handler::exists_user(&user.user, &user.email).await {
             HttpResponse::Ok().json(Action::Register {
                 status: -1,
                 id: Uuid::nil(),
             })
         } else {
-            if let Ok(uuid) =
-                handler::create_user(db_pool.get_ref(), &user.user, &user.email, &user.pass).await
-            {
+            if let Ok(uuid) = handler::create_user(&user.user, &user.email, &user.pass).await {
                 HttpResponse::Ok().json(Action::Register {
                     status: 0,
                     id: uuid,
@@ -293,17 +249,11 @@ async fn register(db_pool: web::Data<MySqlPool>, user: web::Form<RegInfo>) -> Ht
 }
 
 #[post("/api/auth/getToken")]
-async fn login(
-    db_pool: web::Data<MySqlPool>,
-    id: Identity,
-    user: web::Form<LoginInfo>,
-) -> HttpResponse {
+async fn login(id: Identity, user: web::Form<LoginInfo>) -> HttpResponse {
     if !EMAIL_REGEX.is_match(&user.email) || !PASSWD_REGEX.is_match(&user.key) {
         HttpResponse::Ok().json(Action::GetToken { status: -10 })
     } else {
-        if let Ok(result) =
-            handler::check_password_email(db_pool.get_ref(), &user.email, &user.key).await
-        {
+        if let Ok(result) = handler::check_password_email(&user.email, &user.key).await {
             if let Some(uuid) = result {
                 id.remember(uuid.to_simple().to_string());
                 HttpResponse::Ok().json(Action::GetToken { status: 0 })
@@ -323,26 +273,17 @@ async fn logout(id: Identity) -> HttpResponse {
 }
 
 #[post("/api/auth/changePassword")]
-async fn change_password(
-    db_pool: web::Data<MySqlPool>,
-    id: Identity,
-    passwd: web::Form<ChangePassword>,
-) -> HttpResponse {
+async fn change_password(id: Identity, passwd: web::Form<ChangePassword>) -> HttpResponse {
     if let Some(uuid) = id.identity() {
         if !PASSWD_REGEX.is_match(&passwd.old_pass) || !PASSWD_REGEX.is_match(&passwd.new_pass) {
             HttpResponse::Ok().json(Action::ChangePassword { status: -10 })
         } else {
-            if let Ok(opt) = handler::check_password_uuid(
-                db_pool.get_ref(),
-                &Uuid::parse_str(&uuid).unwrap(),
-                &passwd.old_pass,
-            )
-            .await
+            if let Ok(opt) =
+                handler::check_password_uuid(&Uuid::parse_str(&uuid).unwrap(), &passwd.old_pass)
+                    .await
             {
                 if opt.is_some() {
-                    if let Ok(_) =
-                        handler::update_password(db_pool.get_ref(), &uuid, &passwd.new_pass).await
-                    {
+                    if let Ok(_) = handler::update_password(&uuid, &passwd.new_pass).await {
                         HttpResponse::Ok().json(Action::ChangePassword { status: 0 })
                     } else {
                         HttpResponse::Ok().json(Action::ChangePassword { status: -2 })
@@ -367,14 +308,11 @@ struct NginxRtmpForm {
 }
 
 #[get("/callback/nginx")]
-async fn nginx_callback(
-    db_pool: web::Data<MySqlPool>,
-    data: web::Query<NginxRtmpForm>,
-) -> HttpResponse {
+async fn nginx_callback(data: web::Query<NginxRtmpForm>) -> HttpResponse {
     if !ID_REGEX.is_match(&data.name) || data.token.is_nil() {
         HttpResponse::Forbidden().body("Illegal Parameters!")
     } else {
-        if let Ok(raw) = handler::raw_room_by_stream_name(db_pool.get_ref(), &data.name).await {
+        if let Ok(raw) = handler::raw_room_by_stream_name(&data.name).await {
             if let Some(raw) = raw {
                 if raw.is_open() {
                     if raw.token_match(&data.token) {

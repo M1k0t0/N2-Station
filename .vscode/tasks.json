@@ -1,0 +1,20 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cargo",
+			"command": "build",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"args": [
+				"--release"
+			],
+			"group": "build",
+			"label": "rust: cargo build",
+			"options": {
+				"cwd": "${workspaceFolder}/n2-station"
+			}
+		}
+	]
+}

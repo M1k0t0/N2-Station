@@ -15,7 +15,7 @@ rtmp {
     notify_method get;
     application {
         ...
-        on_publish http://localhost:8080/callback/nginx;
+        on_publish http://127.0.0.1:8080/callback/nginx;
     }
 }
 ```
@@ -29,7 +29,6 @@ Information needed to run the Backend is contained in `config.json`, which shoul
 ```json5
 {
     "bind_address": "0.0.0.0",
-    "pool_max_conns": 10, //Max connection to sql pool
     "server_port": 8080, //The port the server runs on
     "database_url":"<url>", //e.g. mariadb://root:qwer1234@127.0.0.1/n2station
     "room_creation_limit": 5, //Limit number of room created per user
@@ -64,41 +63,6 @@ See [rust-lang.org](https://www.rust-lang.org/tools/install)
 - pkg-config
 - libssl-dev
 
-#### Setup Database
-
-You may have either of `MariaDB` or `MySQL` installed. Then run the following SQLs:
-
-```sql
-# Replace <database> with any name you prefer
-CREATE DATABASE <database>;
-# SQL schemas will be checked during compile time
-# Thus we need to create tables manually
-CREATE TABLE IF NOT EXISTS `users`(
-            `uuid` CHAR(32) NOT NULL,
-            `username` VARCHAR(16) NOT NULL,
-            `email` VARCHAR(30) NOT NULL,
-            `passwd` BINARY(60) NOT NULL,
-            `reg_date` TIMESTAMP NOT NULL
-        );
-CREATE TABLE IF NOT EXISTS `rooms`(
-            `owner_uuid` CHAR(32) NOT NULL,
-            `stream_id` VARCHAR(16) NOT NULL,
-            `title` VARCHAR(16) NOT NULL,
-            `desc` VARCHAR(20) NOT NULL,
-            `tag` VARCHAR(1024) NULL,
-            `open` BOOL NOT NULL,
-            `stream_token` CHAR(32) NULL
-        );
-```
-
-#### Setup Enviroment
-
-Edit `.env` file as following
-`DATABASE_URL=<database_url>`
-
-Example given in default `.env`
-__DON'T FORGET TO EDIT THE CONFIGURATION FILE__
-
 #### Build Command
 
 `cargo build --release`
@@ -107,7 +71,7 @@ Product could be found in ./target/release/
 
 ### Windows
 
-Simply run `cargo build --release`
+Run `cargo build --release`
 
 ## API
 

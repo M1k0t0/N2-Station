@@ -33,7 +33,7 @@ Information needed to run the Backend is contained in `config.json`, which shoul
     "database_url":"<url>", //e.g. mysql://root:qwer1234@127.0.0.1/n2station
     "room_creation_limit": 5, //Limit number of room created per user
     "room_open_limit": 2, //The number of room that could be open status globally
-    "authorization_force_https": true, //Wheter authorization requires https forcibly, if true, no cookies will be set
+    "authorization_force_https": true, //Wheter authorization requires https forcibly, if true with http, no cookies will be set
 }
 ```
 

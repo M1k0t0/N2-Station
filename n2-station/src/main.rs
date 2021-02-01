@@ -78,7 +78,7 @@ async fn initialize_database() -> Result<()> {
         `uuid` CHAR(32) NOT NULL,
         `username` VARCHAR(16) NOT NULL,
         `email` VARCHAR(30) NOT NULL,
-        `passwd` BINARY(60) NOT NULL
+        `passwd` CHAR(60) NOT NULL
     )
     "#,
         )

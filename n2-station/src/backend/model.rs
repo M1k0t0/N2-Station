@@ -102,7 +102,7 @@ pub mod response {
         pub(super) uuid: String,
         username: String,
         email: String,
-        pub(super) passwd: Vec<u8>,
+        pub(super) passwd: String,
     }
 
     #[derive(serde::Serialize)]
@@ -202,12 +202,12 @@ pub mod response {
     }
 
     impl RawUser {
-        pub fn new(uuid: &str, name: &str, email: &str, passwd: Vec<u8>) -> Self {
+        pub fn new(uuid: &str, name: &str, email: &str, passwd: &str) -> Self {
             Self {
                 uuid: String::from(uuid),
                 username: String::from(name),
                 email: String::from(email),
-                passwd,
+                passwd: String::from(passwd),
             }
         }
 
@@ -413,10 +413,9 @@ pub mod handler {
     pub async fn create_user(name: &str, email: &str, pass: &str) -> Result<Uuid> {
         let uuid = Uuid::new_v4();
         let uuid_str = uuid.to_simple().to_string();
-        let pass_str = hash(pass, 4)?;
-        let pass = pass_str.as_bytes();
+        let pass = hash(pass, 4)?;
         RBATIS
-            .save("", &RawUser::new(&uuid_str, name, email, pass.to_vec()))
+            .save("", &RawUser::new(&uuid_str, name, email, &pass))
             .await?;
         Ok(uuid)
     }
@@ -425,8 +424,7 @@ pub mod handler {
         let wrapper = RBATIS.new_wrapper().eq("email", email);
         let raw: Option<RawUser> = RBATIS.fetch_by_wrapper("", &wrapper).await?;
         if let Some(raw) = raw {
-            let real = String::from_utf8(raw.passwd)?;
-            if verify(pass, &real)? {
+            if verify(pass, &raw.passwd)? {
                 Ok(Some(Uuid::parse_str(&raw.uuid)?))
             } else {
                 Ok(None)
@@ -441,8 +439,7 @@ pub mod handler {
         let wrapper = RBATIS.new_wrapper().eq("uuid", uuid_str);
         let raw: Option<RawUser> = RBATIS.fetch_by_wrapper("", &wrapper).await?;
         if let Some(raw) = raw {
-            let real = String::from_utf8(raw.passwd)?;
-            if verify(pass, &real)? {
+            if verify(pass, &raw.passwd)? {
                 Ok(Some(Uuid::parse_str(&raw.uuid)?))
             } else {
                 Ok(None)

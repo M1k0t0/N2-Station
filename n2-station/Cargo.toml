@@ -1,6 +1,6 @@
 [package]
 name = "n2-station"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["switefaster <switefaster@gmail.com>"]
 edition = "2018"
 

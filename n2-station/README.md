@@ -105,7 +105,7 @@ All effective requests to `/api/..` return an unformatted json, following the ne
 
 User's authorization token is stored in cookies under `Authorization`.
 
-__!!!WARNING__ We store bcryped password in databse, so __RAW__ password is trasferred with `POST`. But so far out session has __NEVER__ been encrypted. `POST` data is also not encrypted under `http`, and thus you __MUST__ use `https` to ensure the security. This may be solved after OAuth2 implementation is done.
+__!!!WARNING__ We store bcrypted password in databse, so __RAW__ password is transferred with `POST`. But so far out session has __NEVER__ been actively encrypted. `POST` data is __NOT__ encrypted under `http`, and thus you __MUST__ use `https` to ensure the security. This may be solved after OAuth2 implementation is done.
 
 ### References
 

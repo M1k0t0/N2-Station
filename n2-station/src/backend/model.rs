@@ -283,10 +283,10 @@ pub mod handler {
     ) -> Result<Option<BakedRoom>> {
         let query = raw_room_by_stream_name(stream_name).await?;
         if let Some(raw) = query {
-            if detail && raw.owner_match(owner_uuid) {
-                Ok(Some(raw.bake(detail).await?))
-            } else {
+            if detail && !raw.owner_match(owner_uuid) {
                 Ok(None)
+            } else {
+                Ok(Some(raw.bake(detail).await?))
             }
         } else {
             Ok(None)
@@ -329,7 +329,7 @@ pub mod handler {
             None
         } else {
             let tag: Vec<String> = serde_json::from_str(tag)?;
-            if tag.len() > 0 {
+            if tag.len() > 0 && tag.len() <= 20 {
                 Some(tag.join(";"))
             } else {
                 None

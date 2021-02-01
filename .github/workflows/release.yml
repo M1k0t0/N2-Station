@@ -1,0 +1,40 @@
+on:
+  push:
+    tags:
+    - 'rust-v*'
+
+name: Upload Release Asset
+
+jobs:
+  build:
+
+    defaults:
+      run:
+        working-directory: n2-station
+
+    name: Upload Release Asset
+    runs-on: ubuntu-latest
+    steps:
+      uses: actions/checkout@v2
+      - name: Build
+        run: cargo build --release
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.YOUR_SECRET_NAME }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.YOUR_SECRET_NAME }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/n2-station/target/release/n2-station
+          asset_name: n2-station
+          asset_content_type: application/octet-stream

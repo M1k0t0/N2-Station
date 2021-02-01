@@ -28,9 +28,9 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Build
-      run: cargo build --verbose --release
+      run: cargo build --verbose
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
-        path: ${{ github.workspace }}/n2-station/target/release/n2-station
+        path: ${{ github.workspace }}/n2-station/target/debug/n2-station
         name: 'n2-station'

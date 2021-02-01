@@ -20,7 +20,7 @@ pub mod form {
         pub id: String,
         pub title: String,
         pub desc: String,
-        pub tag: Vec<String>,
+        pub tag: String,
     }
 
     #[derive(Default, serde::Deserialize)]
@@ -323,12 +323,17 @@ pub mod handler {
         stream_id: &str,
         title: &str,
         desc: &str,
-        tag: Vec<String>,
+        tag: &str,
     ) -> Result<()> {
-        let tag = if tag.len() > 0 {
-            Some(tag.join(";"))
-        } else {
+        let tag = if tag.is_empty() {
             None
+        } else {
+            let tag: Vec<String> = serde_json::from_str(tag)?;
+            if tag.len() > 0 {
+                Some(tag.join(";"))
+            } else {
+                None
+            }
         };
         RBATIS
             .save("", &RawRoom::new(creator, stream_id, title, desc, tag))

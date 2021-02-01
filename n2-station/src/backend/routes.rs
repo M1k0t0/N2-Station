@@ -110,8 +110,7 @@ async fn create_room(
         } else if !ID_REGEX.is_match(&room.id).unwrap()
             || !TITLE_REGEX.is_match(&room.title).unwrap()
             || !DESC_REGEX.is_match(&room.desc).unwrap()
-            || room.tag.len() > 10
-            || room.tag.iter().any(|s| s.contains(';'))
+            || room.tag.contains(';')
         {
             HttpResponse::Ok().json(Action::CreateRoom { status: -10 })
         } else {
@@ -119,8 +118,7 @@ async fn create_room(
                 HttpResponse::Ok().json(Action::CreateRoom { status: -1 })
             } else {
                 if let Ok(_) =
-                    handler::create_room(&uuid, &room.id, &room.title, &room.desc, room.tag.clone())
-                        .await
+                    handler::create_room(&uuid, &room.id, &room.title, &room.desc, &room.tag).await
                 {
                     HttpResponse::Ok().json(Action::CreateRoom { status: 0 })
                 } else {

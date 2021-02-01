@@ -247,7 +247,7 @@ __NOTE: ONLY `application/x-www-form-urlencoded` IS ACCEPTED FOR `POST` REQUEST_
     - id - `stream_id` to create(at least 4 and up to 16 letters, contains only `A-Z`, `a-z`, `0-9`, `-` and `_`)
     - title - room title(up to 16 letters)
     - desc - room description(up to 20 letters)
-    - tag - room tags (string[]), should contain no `;`, optional
+    - tag - room tags (JSON string array e.g. "[\"tagA\", \"tagB\"]"), up to 20 tags, each tag should contain no `;` and no more than 20 characters, optional
   - __RESPONSE__
 
 ```json5

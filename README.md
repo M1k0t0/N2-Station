@@ -1,4 +1,24 @@
-# N2-Station
-> A lightweight live streaming platform that provides basic live room features. 
->   
-> 一个轻量的直播平台，提供最基本的直播间功能
+# N2 Frontend
+
+## Project setup
+```
+npm install
+```
+
+### Compiles and hot-reloads for development
+```
+npm run serve
+```
+
+### Compiles and minifies for production
+```
+npm run build
+```
+
+### Lints and fixes files
+```
+npm run lint
+```
+
+### Customize configuration
+See [Configuration Reference](https://cli.vuejs.org/config/).

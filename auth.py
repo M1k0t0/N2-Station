@@ -175,11 +175,11 @@ def changePassword():
     user.sync_data()
 
 
-@auth.route('/api/auth/callback', methods=["POST"])
+@auth.route('/api/auth/callback', methods=["GET"])
 def verify():
     d = {
         "email": request.values.get("email"),
-        "user": request.values.get("user"),
+        "name": request.values.get("user"),
         "id": request.values.get("id")
     }
 

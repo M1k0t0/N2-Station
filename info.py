@@ -39,6 +39,7 @@ def getRoomList():
         tmp=rooms.find()
         for i in tmp:
             roomList[str(i["_id"])]=i
+            roomList[str(i["_id"])]["id"]=str(i["_id"])
             try:
                 user=User(db,{"id": i["userID"]})
             except:

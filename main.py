@@ -1,4 +1,5 @@
 from flask import Flask, Blueprint, jsonify, request
+from flask_cors import CORS
 from interface import User
 import pymongo, os, sys, time, uuid, json, utils, process
 
@@ -10,6 +11,8 @@ app = Flask(__name__)
 app.register_blueprint(auth)
 app.register_blueprint(info)
 app.register_blueprint(user)
+
+CORS(app)
 
 BACKEND_VERSION="v0.0.1"
 

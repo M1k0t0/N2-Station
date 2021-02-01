@@ -20,7 +20,6 @@ pub mod form {
         pub id: String,
         pub title: String,
         pub desc: String,
-        pub image: String,
         pub tag: Vec<String>,
     }
 
@@ -87,7 +86,6 @@ pub mod response {
 
     #[derive(serde::Serialize, Default)]
     pub struct BakedRoom {
-        owner_uuid: Uuid,
         stream_id: String,
         title: String,
         desc: String,
@@ -160,7 +158,6 @@ pub mod response {
                 .map(|s| s.to_string())
                 .collect();
             let status = if self.is_open() { "open" } else { "close" };
-            let uuid = Uuid::parse_str(self.owner_uuid.as_str())?;
             let wrapper = RBATIS.new_wrapper().eq("uuid", &self.owner_uuid);
             let raw: RawUser = RBATIS.fetch_by_wrapper("", &wrapper).await?;
             let stream_token = if detail && self.is_open() {
@@ -173,7 +170,6 @@ pub mod response {
                 None
             };
             Ok(BakedRoom {
-                owner_uuid: uuid,
                 stream_id: self.stream_id.clone(),
                 title: self.title.clone(),
                 desc: self.description.clone(),

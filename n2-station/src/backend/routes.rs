@@ -106,10 +106,7 @@ async fn create_room(
 ) -> HttpResponse {
     if let Some(uuid) = id.identity() {
         if handler::raw_rooms_for_user(&uuid).await.unwrap() > config.room_creation_limit {
-            HttpResponse::Ok().json(Action::OpenRoom {
-                stream_token: Uuid::nil(),
-                status: -2,
-            })
+            HttpResponse::Ok().json(Action::CreateRoom { status: -2 })
         } else if !ID_REGEX.is_match(&room.id).unwrap()
             || !TITLE_REGEX.is_match(&room.title).unwrap()
             || !DESC_REGEX.is_match(&room.desc).unwrap()

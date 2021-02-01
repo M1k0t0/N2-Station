@@ -29,6 +29,19 @@ struct ServerConfig {
     authorization_force_https: bool,
 }
 
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            bind_address: String::from("0.0.0.0"),
+            server_port: 8080,
+            database_url: String::from("mysql://root:root@localhost/n2station"),
+            room_creation_limit: 5,
+            room_open_limit: 2,
+            authorization_force_https: true,
+        }
+    }
+}
+
 #[actix_web::main]
 async fn main() -> Result<()> {
     env_logger::builder()
@@ -38,8 +51,14 @@ async fn main() -> Result<()> {
 
     let param: Param = argh::from_env();
 
-    let config: ServerConfig = web::block(|| {
-        let file = std::fs::File::open(param.config).unwrap();
+    let config: ServerConfig = web::block(move || {
+        let file_path = std::path::Path::new(&param.config);
+        let file = if file_path.exists() {
+            std::fs::File::open(file_path)
+        } else {
+            std::fs::File::create(file_path)
+        }
+        .unwrap();
         let reader = std::io::BufReader::new(file);
         serde_json::from_reader(reader)
     })

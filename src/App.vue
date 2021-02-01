@@ -117,7 +117,7 @@
                             align="center"
                             justify="center"
                         >
-                            <v-col sm="12" md="8" v-if="player.source" id="videoFrame">
+                            <v-col sm="12" md="8" v-if="player.source" id="videoFrame" class="col-me">
                                 <video
                                 width="100%"
                                 height="auto"
@@ -126,7 +126,7 @@
                                 </video>
                             </v-col>
                             <v-spacer />
-                            <v-col sm="12" md="4" v-if="player.source">
+                            <v-col sm="12" md="4" v-if="player.source" class="col-me">
                                 <v-card tile id="chatBox" class="pt-1 pb-1" height="80%">
                                     <v-card outline id="chatContent" height="80%" class="ml-2 mr-2 mt-0 mb-2">
                                     </v-card>
@@ -289,4 +289,10 @@ export default {
             border: 1px solid #ccc;
         }
     }
+</style>
+<style>
+/* 用于覆盖错误的 CSS 样式 */
+.col-me {
+    flex-basis: auto !important;
+}
 </style>

@@ -30,7 +30,7 @@ Information needed to run the Backend is contained in `config.json`, which shoul
 {
     "bind_address": "0.0.0.0",
     "server_port": 8080, //The port the server runs on
-    "database_url":"<url>", //e.g. mariadb://root:qwer1234@127.0.0.1/n2station
+    "database_url":"<url>", //e.g. mysql://root:qwer1234@127.0.0.1/n2station
     "room_creation_limit": 5, //Limit number of room created per user
     "room_open_limit": 2, //The number of room that could be open status globally
     "authorization_force_https": true, //Wheter authorization requires https forcibly, if true, no cookies will be set

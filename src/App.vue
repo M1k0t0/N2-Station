@@ -103,26 +103,9 @@
             </v-sheet>
 
             <v-list
-                style="padding-left:75px;"
+                style="padding-left:75px; margin-top: 16px;"
                 shaped
             >
-                <v-list-item style="min-height:38px" v-if="tagList.open.length">
-                    <v-list-item-title class="text-center">
-                        活跃
-                    </v-list-item-title>
-                </v-list-item>
-
-                <v-list-item style="min-height:38px" v-if="!tagList.open.length">
-                    <v-list-item-title class="text-center">
-                        活跃
-                    </v-list-item-title>
-                </v-list-item>
-                <v-list-item style="min-height:38px" v-if="!tagList.open.length">
-                    <v-list-item-content>
-                        <v-list-item-subtitle>暂无此类型的Tag</v-list-item-subtitle>
-                    </v-list-item-content>
-                </v-list-item>
-
                 <v-list-item
                 v-for="tag in tagList.open"
                 :key="tag"
@@ -134,23 +117,7 @@
                 </v-list-item-content>
                 </v-list-item>
 
-                <v-list-item style="min-height:38px" v-if="tagList.close.length">
-                    <v-list-item-title class="text-center">
-                        不活跃
-                    </v-list-item-title>
-                </v-list-item>
-
-                <v-list-item style="min-height:38px" v-if="!tagList.close.length">
-                    <v-list-item-title class="text-center">
-                        不活跃
-                    </v-list-item-title>
-                    
-                </v-list-item>
-                <v-list-item style="min-height:38px" v-if="!tagList.close.length">
-                    <v-list-item-content>
-                        <v-list-item-subtitle>暂无此类型的Tag</v-list-item-subtitle>
-                    </v-list-item-content>
-                </v-list-item>
+                <v-divider class="mx-3 my-5" v-if="tagList.open.length"></v-divider>
 
                 <v-list-item
                 v-for="tag in tagList.close"

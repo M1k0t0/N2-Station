@@ -87,3 +87,16 @@ def getUserList():
         except BaseException as e:
             return jsonify(utils.simple_reply("searchUser",str(e)))
         return jsonify({ "id": user.id, "name": user.name, "email": user.email, "action": "searchUser", "status": 0 })
+
+@info.route('/api/info/tag', methods=["GET"])
+def getTagList():
+    tagList={ 'open':[], 'close':[] }
+    for i in rooms.find({"status":"open"}):
+        for j in i['tag']:
+            tagList['open'].append(j)
+    for i in rooms.find({"status":"close"}):
+        for j in i['tag']:
+            if j in tagList['open']:
+                continue
+            tagList['close'].append(j)
+    return jsonify({ "data": tagList, "action": "getTagList", "status": 0 })

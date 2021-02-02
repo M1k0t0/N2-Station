@@ -1,173 +1,154 @@
 <template>
     <v-app id="sandbox">
 
+        <v-system-bar app color="grey darken-4" class="ml-n1">
+            <span><b>N2Station</b></span>
+            <v-spacer></v-spacer>
+        </v-system-bar>
+
         <v-navigation-drawer
-                v-model="primaryDrawer.model"
-                :clipped="primaryDrawer.clipped"
-                :floating="primaryDrawer.floating"
-                :mini-variant="primaryDrawer.mini"
-                mini-variant-width="60"
-                :expand-on-hover="true"
-                app
-                overflow
-        >
-
-            <v-list-item
-                    link
-                    @click="clearSource()"
+            color="grey darken-3"
+            v-model="primaryDrawer.model"
+            app
+            width="300"
+            floating
             >
-                <v-list-item-icon>
-                    <v-icon>fa-hashtag</v-icon>
-                </v-list-item-icon>
+            <v-navigation-drawer
+                    v-model="primaryDrawer.model"
+                    :clipped="primaryDrawer.clipped"
+                    :floating="primaryDrawer.floating"
+                    :mini-variant="primaryDrawer.mini"
+                    mini-variant-width="70"
+                    :expand-on-hover="false"
+                    absolute
+                    color="grey darken-4"
+            >
+                <v-avatar
+                class="d-block text-center mx-auto mt-4"
+                color="grey darken-1"
+                size="47"
+                rounded
+                @click="clearSource(); routeTo('/welcome')"
+                ><v-icon>fa-hashtag</v-icon></v-avatar>
 
-                <v-list-item-content>
-                    <v-list-item-title>主页面</v-list-item-title>
-                </v-list-item-content>
-            </v-list-item>
+                <v-divider class="mx-3 my-5"></v-divider>
+                
+                <div 
+                v-for="item in $root.roomList"
+                :key="item.title"
+                class="text-center">
+                    <v-badge 
+                    bordered
+                    avatar
+                    overlap
+                    :color="item.status=='open'?'red':'grey'" 
+                    :icon="item.status=='open'?'mdi-broadcast':'mdi-broadcast-off'"
+                    >
+                        <v-avatar
+                        link
+                        class="d-block text-center mx-auto mb-9"
+                        color="grey lighten-1"
+                        size="40"
+                        >
+                        
+                            <v-btn 
+                            icon 
+                            @click="$root.sfmode?routeTo('/live/',item.stream_id):routeTo('/live/',item.id)"
+                            style="margin-top:1px;">
+                                <img
+                                    src="https://cdn.vuetifyjs.com/images/john.jpg"
+                                    alt="John"
+                                    style="width:40px!important; height:40px!important; margin-top:2px;"
+                                    class="ml-5"
+                                >
+                                
+                                <!-- <v-icon v-if="item.status=='open'" class="mx-auto my-auto">mdi-broadcast</!-->
+                                <!-- <v-icon v-if="item.status=='close'" class="mx-auto my-auto">mdi-broadcast-off</v-icon> --> -->
+                            </v-btn>
+                        </v-avatar>
+                    </v-badge>
+                </div>
+            </v-navigation-drawer>
 
-            <v-divider></v-divider>
+            <v-sheet
+            color="grey darken-4"
+            height="120"
+            width="100%"
+            align="center"
+            justify="center"
+            style="padding-left:73px;"
+            tile
+            >
+            <v-card flat>
+                <v-snackbar
+                    v-model="error_snackbar"
+                    top
+                    absolute
+                    width="80%"
+                    >
+                        Not a vaild RoomID.
+                </v-snackbar>
 
-            <v-list-item style="min-height:38px">
-                <v-list-item-subtitle>
-                    频道
-                </v-list-item-subtitle>
-            </v-list-item>
+                <v-text-field 
+                v-model="player.id"
+                append-outer-icon='mdi-bus'
+                @click:append-outer="goToRoom()"
+                label="Join Room"
+                class="mt-0 pt-10 pl-3 pr-3"
+                color="white"
+                >
+
+                </v-text-field>
+            </v-card>
+            </v-sheet>
 
             <v-list
-                    dense
-                    nav
-                    class="pt-0"
+                style="padding-left:75px;"
+                shaped
             >
                 <v-list-item
-                        v-for="item in roomList"
-                        :key="item.title"
-                        link
-                        @click="loadRoom(sfmode?item.stream_id:item.id)"
+                v-for="n in 5"
+                :key="n"
+                link
                 >
-                    <v-list-item-icon v-if="item.status=='open'">
-                        <v-icon class="mt-2">mdi-broadcast</v-icon>
-                    </v-list-item-icon>
-
-                    <v-list-item-icon v-if="item.status=='close'">
-                        <v-icon class="mt-2">mdi-broadcast-off</v-icon>
-                    </v-list-item-icon>
-
-                    <v-list-item-content>
-                    <v-list-item-title>{{ item.title }}</v-list-item-title>
-                    <v-list-item-subtitle>{{ item.desc }}</v-list-item-subtitle>
-                    </v-list-item-content>
-
+                <v-list-item-content>
+                    <v-list-item-title>Item {{ n }}</v-list-item-title>
+                </v-list-item-content>
                 </v-list-item>
             </v-list>
         </v-navigation-drawer>
 
         <v-app-bar
-                :clipped-left="primaryDrawer.clipped"
-                app
+            color="grey darken-4"
+            :clipped-left="primaryDrawer.clipped"
+            app
         >
 
         <v-btn
-                @click.stop="primaryDrawer.model = !primaryDrawer.model"
-                v-if="!primaryDrawer.model"
-                icon
+            @click.stop="primaryDrawer.model = !primaryDrawer.model"
+            v-if="!primaryDrawer.model"
+            icon
         >
             <v-icon>fa-chevron-right</v-icon>
         </v-btn>
         <v-btn
-                @click.stop="primaryDrawer.model = !primaryDrawer.model"
-                v-if="primaryDrawer.model"
-                icon
+            @click.stop="primaryDrawer.model = !primaryDrawer.model"
+            v-if="primaryDrawer.model"
+            icon
         >
             <v-icon>fa-chevron-left</v-icon>
         </v-btn>
-        <v-toolbar-title>
-            N2 Station
-        </v-toolbar-title>
 
         <v-spacer></v-spacer>
 
-        <v-btn icon>
+        <v-btn icon @click="routeTo('/login')">
             <v-icon>mdi-login-variant</v-icon>
         </v-btn>
 
         </v-app-bar>
 
         <v-content>
-            <v-container fluid>
-                <v-row
-                        align="center"
-                        justify="center"
-                >
-                <v-col sm="12" md="10" v-if="!player.source">
-                    <v-card shaped tile>
-                        <div class="pl-4 pb-2 pt-2">
-                            <h1># N2 Station</h1>
-                            <br />
-                            <p>一个实现 N2 Frontend API 的多直播源直播站</p>
-                            <p>Github项目: <a href="https://github.com/M1k0t0/N2-Station">https://github.com/M1k0t0/N2-Station</a></p>
-                            <p>拉流播放器基于 <a href="https://github.com/bilibili/flv.js">flv.js</a></p>
-                            <p>项目仍在编写中，觉得顶的话就给个Star吧！</p>
-                        </div>
-                    </v-card>
-                </v-col>
-
-                <v-col sm="12" md="10" v-if="!player.source">
-                    <v-card tile>
-                        <h3 class="pt-5 pl-4 pr-4">### DEBUG MODE ###</h3>
-                        <v-text-field
-                            v-model="backend"
-                            label="Backend API Address"
-                            prepend-icon="mdi-link"
-                            append-icon="mdi-water"
-                            append-outer-icon="mdi-send"
-                            @click:append="resetBackendAddress()"
-                            @click:append-outer="flushBackendAPI()"
-                            class="pt-5 pl-4 pr-4"
-                        ></v-text-field>
-                        <v-switch
-                        v-model="sfmode"
-                        :label="`API Format: ${getAPIFormat()}`"
-                        class="pt-0 pl-4 pr-4"
-                        @change="resetBackendAddress()"
-                        ></v-switch>
-                    </v-card>
-                </v-col>
-                
-                <v-col sm="12" md="11" v-if="player.source">
-                    <v-card tile class="pt-3 pl-3 pb-1 pr-3">
-                        <v-row
-                            align="center"
-                            justify="center"
-                        >
-                            <v-col sm="12" md="8" v-if="player.source" id="videoFrame" class="col-me">
-                                <video
-                                width="100%"
-                                height="auto"
-                                id="videoElement" controls autoplay>
-                                    Your browser is too old which doesn't support HTML5 video.
-                                </video>
-                            </v-col>
-                            <v-spacer />
-                            <v-col sm="12" md="4" v-if="player.source" class="col-me">
-                                <v-card tile id="chatBox" class="pt-1 pb-1" height="80%">
-                                    <v-card outline id="chatContent" height="80%" class="ml-2 mr-2 mt-0 mb-2">
-                                    </v-card>
-                                    <v-row class="py-5">
-                                    <v-col cols="9" class="pt-0 pr-0">
-                                        <v-text-field color="white" label="Commit" class="ml-2 mr-2 pt-0 mt-0"></v-text-field>
-                                    </v-col>
-                                    <v-spacer/>
-                                    <v-col cols="3" class="pt-0 pr-0 pl-4">
-                                        <v-btn icon color="white"><v-icon color="white">mdi-arrow-up-thick</v-icon></v-btn>
-                                    </v-col>
-                                    </v-row>
-                                </v-card>
-                            </v-col>
-                        </v-row>
-                    </v-card>
-                </v-col>
-                </v-row>
-            </v-container>
+            <router-view></router-view>
         </v-content>
 
         <v-footer
@@ -182,15 +163,12 @@
 <script>
 
 import axios from 'axios';
-import flvjs from 'flv.js';
-import global_ from './components/Global';
+// import global_ from './components/Global';
 
 export default {
     name: "App",
     components:{ },
     data: () => ({
-        backend: global_.SFMode ? global_.BackendAddress : global_.debugBackendAddress,
-        sfmode: global_.SFMode,
         primaryDrawer: {
             model: true,
             type: 'permanent',
@@ -202,68 +180,24 @@ export default {
             inset: false,
         },
         player:{
-            options: { },
-            source: ""
+            id: null,
+            error: null
         },
-        roomList: []
+        roomList: [],
+        error_snackbar: false
     }),
     methods:{
         clearSource(){
-            this.player.source = '';
-            if(this.flvPlayer){
-                this.flvPlayer.destroy();
-                this.flvPlayer=null;
+            if(this.$root.flvPlayer){
+                this.$root.flvPlayer.destroy();
+                this.$root.flvPlayer=null;
             }
-        },
-        setSource(id){
-            this.player.source = 'http://live.4g.cx/live?port=1935&app=rtmp&stream='+id;
-            if(!this.flvPlayer) this.$nextTick(() => this.pullVideo());
-            else{
-                this.flvPlayer.load();
-                this.flvPlayer.play();
-            }
-        },
-        loadRoom(id){
-            this.setSource(id);
-            this.setChatboxHeight('chatBox');
-        },
-        pullVideo(){
-            if (this.player.source && flvjs.isSupported()) {
-                var videoElement = document.getElementById('videoElement');
-                this.flvPlayer = flvjs.createPlayer({
-                    type: 'flv',
-                    url: this.player.source,
-                    hasAudio: true,
-                    hasVideo: true,
-                    isLive: true
-                });
-                this.flvPlayer.attachMediaElement(videoElement);
-                this.flvPlayer.load();
-                this.flvPlayer.play();
-            }
-        },
-        setChatboxHeight(id){
-            this.$nextTick(() => {
-                if(document.documentElement.clientWidth>=960){
-                    document.getElementById(id).style.height=document.getElementById('videoFrame').clientHeight-24+'px';
-                }else
-                    document.getElementById(id).style.height=document.documentElement.clientHeight-document.getElementById('videoFrame').clientHeight-24+'px';
-            })
-        },
-        resetBackendAddress(){
-            this.backend=this.sfmode ? global_.BackendAddress : global_.debugBackendAddress;
-            this.flushBackendAPI();
-        },
-        flushBackendAPI(){
-            this.getRoomList();
-            if(this.backend==global_.debugBackendAddress) this.sfmode=false;
-            else this.sfmode=true;
         },
         getRoomList(){
             axios
-            .get(this.backend+'/api/info/room')
+            .get(this.$root.backend+'/api/info/room')
             .then(response => {
-                this.roomList = this.sfmode ? response.data.rooms : response.data.data;
+                this.$root.roomList = this.$root.sfmode ? response.data.rooms : response.data.data;
             })
             .catch(error => {
                 console.log(error);
@@ -271,8 +205,16 @@ export default {
             })
             .finally(() => this.loading = false);
         },
-        getAPIFormat(){
-            return this.sfmode?"SF":"CK";
+        routeTo(base, data=''){
+            this.$router.push({
+                path: base+data,
+            })
+        },
+        goToRoom(){
+            if(this.$root.roomList[this.player.id]==undefined)
+                this.error_snackbar=true;
+            else
+                this.routeTo('/live/',this.player.id)
         }
     },
     mounted () {

@@ -166,7 +166,7 @@ export default {
     name: "App",
     components:{ },
     data: () => ({
-        backend: "http://live.4g.cx:8443",  // http unsafe
+        backend: "http://live.4g.cx/backend",  // http unsafe
         primaryDrawer: {
             model: true,
             type: 'permanent',

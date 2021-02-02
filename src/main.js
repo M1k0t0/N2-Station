@@ -14,6 +14,13 @@ new Vue({
     backend: global_.SFMode ? global_.BackendAddress : global_.debugBackendAddress,
     sfmode: global_.SFMode,
     flvPlayer: null,
-    roomList: []
+    roomList: {},
+    bread: [
+      {
+          text: 'Homepage',
+          disabled: false,
+          href: '#/welcome',
+      }
+    ]
   })
 }).$mount('#app')

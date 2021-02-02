@@ -53,11 +53,8 @@ export default {
     methods: {
         setSource(id){
             this.player.source = 'http://live.4g.cx/live?port=1935&app=rtmp&stream='+id;
-            if(!this.$root.flvPlayer) this.$nextTick(() => this.pullVideo());
-            else{
-                this.$root.flvPlayer.load();
-                this.$root.flvPlayer.play();
-            }
+            this.$nextTick(() => this.pullVideo());
+
         },
         loadRoom(id){
             this.setSource(id);
@@ -75,7 +72,6 @@ export default {
                 });
                 this.$root.flvPlayer.attachMediaElement(videoElement);
                 this.$root.flvPlayer.load();
-                this.$root.flvPlayer.play();
             }
         },
         setChatboxHeight(id){
@@ -89,6 +85,22 @@ export default {
     },
     mounted() {
         this.loadRoom(this.$route.params.id);
+        this.$set(this.$root.bread,1,{
+            text: this.$root.roomList[this.$route.params.id].title,
+            disabled: true,
+            href: '#/live/'+this.$route.params.id,
+        });
+    },
+    beforeRouteUpdate (to, from, next) {
+        if(this.$root.flvPlayer) this.$root.flvPlayer.destroy();
+        this.id = to.params.id;
+        this.loadRoom(this.id);
+        this.$set(this.$root.bread,1,{
+            text: this.$root.roomList[this.id].title,
+            disabled: true,
+            href: '#/live/'+this.id,
+        });
+        next();
     }
 }
 </script>

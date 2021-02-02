@@ -76,6 +76,7 @@ export default {
         }
     },
     mounted() {
+        this.$root.bread.splice(1,1);
     }
 }
 </script>

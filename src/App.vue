@@ -42,7 +42,7 @@
                         v-for="item in roomList"
                         :key="item.title"
                         link
-                        @click="loadRoom(item.id)"
+                        @click="loadRoom(sfmode?item.stream_id:item.id)"
                 >
                     <v-list-item-icon v-if="item.status=='open'">
                         <v-icon class="mt-2">mdi-broadcast</v-icon>
@@ -110,6 +110,28 @@
                         </div>
                     </v-card>
                 </v-col>
+
+                <v-col sm="12" md="10" v-if="!player.source">
+                    <v-card tile>
+                        <h3 class="pt-5 pl-4 pr-4">### DEBUG MODE ###</h3>
+                        <v-text-field
+                            v-model="backend"
+                            label="Backend API Address"
+                            prepend-icon="mdi-link"
+                            append-icon="mdi-water"
+                            append-outer-icon="mdi-send"
+                            @click:append="resetBackendAddress()"
+                            @click:append-outer="flushBackendAPI()"
+                            class="pt-5 pl-4 pr-4"
+                        ></v-text-field>
+                        <v-switch
+                        v-model="sfmode"
+                        :label="`API Format: ${getAPIFormat()}`"
+                        class="pt-0 pl-4 pr-4"
+                        @change="resetBackendAddress()"
+                        ></v-switch>
+                    </v-card>
+                </v-col>
                 
                 <v-col sm="12" md="11" v-if="player.source">
                     <v-card tile class="pt-3 pl-3 pb-1 pr-3">
@@ -161,12 +183,14 @@
 
 import axios from 'axios';
 import flvjs from 'flv.js';
+import global_ from './components/Global';
 
 export default {
     name: "App",
     components:{ },
     data: () => ({
-        backend: "http://live.4g.cx/backend",  // http unsafe
+        backend: global_.SFMode ? global_.BackendAddress : global_.debugBackendAddress,
+        sfmode: global_.SFMode,
         primaryDrawer: {
             model: true,
             type: 'permanent',
@@ -181,7 +205,7 @@ export default {
             options: { },
             source: ""
         },
-        roomList: {}
+        roomList: []
     }),
     methods:{
         clearSource(){
@@ -225,19 +249,34 @@ export default {
                 }else
                     document.getElementById(id).style.height=document.documentElement.clientHeight-document.getElementById('videoFrame').clientHeight-24+'px';
             })
+        },
+        resetBackendAddress(){
+            this.backend=this.sfmode ? global_.BackendAddress : global_.debugBackendAddress;
+            this.flushBackendAPI();
+        },
+        flushBackendAPI(){
+            this.getRoomList();
+            if(this.backend==global_.debugBackendAddress) this.sfmode=false;
+            else this.sfmode=true;
+        },
+        getRoomList(){
+            axios
+            .get(this.backend+'/api/info/room')
+            .then(response => {
+                this.roomList = this.sfmode ? response.data.rooms : response.data.data;
+            })
+            .catch(error => {
+                console.log(error);
+                this.errored = true;
+            })
+            .finally(() => this.loading = false);
+        },
+        getAPIFormat(){
+            return this.sfmode?"SF":"CK";
         }
     },
     mounted () {
-        axios
-        .get(this.backend+'/api/info/room')
-        .then(response => {
-            this.roomList = response.data.data
-        })
-        .catch(error => {
-            console.log(error)
-            this.errored = true
-        })
-        .finally(() => this.loading = false);
+        this.getRoomList();
     }
 }
 </script>

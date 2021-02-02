@@ -34,6 +34,7 @@ Information needed to run the Backend is contained in `config.json`, which shoul
     "room_creation_limit": 5, //Limit number of room created per user
     "room_open_limit": 2, //The number of room that could be open status globally
     "authorization_force_https": true, //Wheter authorization requires https forcibly, if true with http, no cookies will be set
+    "debug": false //enable debug mode - Access-Control-Allow-Origin: * will be appended to headers
 }
 ```
 
@@ -41,12 +42,12 @@ Information needed to run the Backend is contained in `config.json`, which shoul
 
 You may have either of `MariaDB` or `MySQL` installed. Then run the following SQL:
 
-> You have to create a database for the Backend to work correctly. You can choose any name you prefer, but it have to match with the configuration.
-
 ```sql
 # Replace <database> with any name you prefer
 CREATE DATABASE <database>;
 ```
+
+> You have to create a database for the Backend to work correctly. You can choose any name you prefer, but it have to match with the configuration.
 
 ## Build
 
@@ -205,7 +206,7 @@ __NOTE: ONLY `application/x-www-form-urlencoded` IS ACCEPTED FOR `POST` REQUEST_
 
 ```json5
 {
-    "user": "<user>",
+    "user": "<user>", // or null
     "action": "searchUser"
 }
 ```
@@ -228,7 +229,7 @@ __NOTE: ONLY `application/x-www-form-urlencoded` IS ACCEPTED FOR `POST` REQUEST_
 
 - `POST` `/api/user/room`
   - __EXPLANATION__
-  Fetch detailed room information for a specific room. This contains `stream_token` so authorization is required. If no such room owned by the user if found, `null` is returned
+  Fetch detailed room information for a specific room. This contains `stream_token` so authorization is required. If no such room owned by the user is found, `null` is returned
   - __REQUEST__
     - id - `stream_id` to search
   - __RESPONSE__

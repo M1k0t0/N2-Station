@@ -1,5 +1,10 @@
 use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{middleware::Logger, web, App, HttpServer};
+use actix_web::{
+    dev::Service,
+    http::header::{HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN},
+    middleware::Logger,
+    web, App, HttpServer,
+};
 use anyhow::Result;
 use argh::FromArgs;
 use log::LevelFilter;
@@ -27,19 +32,7 @@ struct ServerConfig {
     room_creation_limit: u64,
     room_open_limit: u64,
     authorization_force_https: bool,
-}
-
-impl Default for ServerConfig {
-    fn default() -> Self {
-        Self {
-            bind_address: String::from("0.0.0.0"),
-            server_port: 8080,
-            database_url: String::from("mysql://root:root@localhost/n2station"),
-            room_creation_limit: 5,
-            room_open_limit: 2,
-            authorization_force_https: true,
-        }
-    }
+    debug: bool,
 }
 
 #[actix_web::main]
@@ -53,12 +46,7 @@ async fn main() -> Result<()> {
 
     let config: ServerConfig = web::block(move || {
         let file_path = std::path::Path::new(&param.config);
-        let file = if file_path.exists() {
-            std::fs::File::open(file_path)
-        } else {
-            std::fs::File::create(file_path)
-        }
-        .unwrap();
+        let file = std::fs::File::open(file_path).unwrap();
         let reader = std::io::BufReader::new(file);
         serde_json::from_reader(reader)
     })
@@ -72,6 +60,18 @@ async fn main() -> Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap_fn(|req, srv| {
+                let cfg = req.app_data::<web::Data<ServerConfig>>().unwrap().clone();
+                let fut = srv.call(req);
+                async move {
+                    let mut res = fut.await?;
+                    if cfg.debug {
+                        res.headers_mut()
+                            .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+                    }
+                    Ok(res)
+                }
+            })
             .wrap(Logger::default())
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&[0; 32])

@@ -244,7 +244,7 @@ pub mod handler {
     }
 
     pub async fn search_rooms_by_owner(owner: &str) -> Result<Vec<BakedRoom>> {
-        let wrapper = RBATIS.new_wrapper().eq("uuid", owner);
+        let wrapper = RBATIS.new_wrapper().eq("owner_uuid", owner);
         Ok(
             stream::iter(RBATIS.list_by_wrapper::<RawRoom>("", &wrapper).await?)
                 .then(|raw| async move { raw.bake(false).await.unwrap() })

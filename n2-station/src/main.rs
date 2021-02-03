@@ -1,3 +1,4 @@
+use actix::Actor;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{
     dev::Service,
@@ -58,6 +59,8 @@ async fn main() -> Result<()> {
     let port = config.server_port;
     let address = config.bind_address.clone();
 
+    let danmaku = backend::ChatServer::new().start();
+
     HttpServer::new(move || {
         App::new()
             .wrap_fn(|req, srv| {
@@ -79,6 +82,7 @@ async fn main() -> Result<()> {
                     .secure(config.authorization_force_https),
             ))
             .data(config.clone())
+            .data(danmaku.clone())
             .configure(backend::init)
     })
     .bind((address, port))?

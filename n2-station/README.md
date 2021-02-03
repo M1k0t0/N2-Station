@@ -1,11 +1,12 @@
 # N2-Station rust-base Backend
 
-> Notice that the response format is silightly different from that in Wiki
+> Notice that the response format is slightly different from that in Wiki
 
 ## How to use
 
-All user interface is under /api/ routes
-Nginx interface defined in /callback/nginx
+- All user interface are under `/api/` scope, see [API](#api)
+- Nginx interface is defined under `/callback/nginx`
+- Danmaku system is under `/chat/{room}`, see [Danmaku System](#danmaku-system)
 
 For nginx:
 
@@ -15,6 +16,7 @@ rtmp {
     notify_method get;
     application {
         ...
+        # localhost doesn't work here somehow, so use 127.0.0.1
         on_publish http://127.0.0.1:8080/callback/nginx;
     }
 }
@@ -24,7 +26,9 @@ Then the user should have their room created, opened and push to `/room?token=` 
 
 ## Configuration
 
-Information needed to run the Backend is contained in `config.json`, which should be sharing the same folder with the binary by default. You can change the configuration with `--config <path>` argument.
+Information needed to run the Backend is contained in `config.json`, which should be sharing the same folder with the binary by default. You can change the configuration path with `--config <path>` argument.
+
+> __PROGRAM WILL PANIC AND TERMINATE IF CONFIG FILE DOESN'T EXISTS OR FAILED TO PARSE__
 
 ```json5
 {
@@ -40,7 +44,7 @@ Information needed to run the Backend is contained in `config.json`, which shoul
 
 ## Usage of prebuilt
 
-You may have either of `MariaDB` or `MySQL` installed. Then run the following SQL:
+You may have either `MariaDB` or `MySQL` installed. Then run the following SQL:
 
 ```sql
 # Replace <database> with any name you prefer
@@ -92,7 +96,7 @@ Frontend-oriented API
 
 #### Response Format
 
-All effective requests to `/api/..` return an unformatted json, following the next format
+All effective requests to `/api/..` return an unformatted json, following the schema underneath
 
 ```json5
 {
@@ -245,9 +249,9 @@ __NOTE: ONLY `application/x-www-form-urlencoded` IS ACCEPTED FOR `POST` REQUEST_
   - __EXPLANATION__
   Create a room with given data
   - __REQUEST__
-    - id - `stream_id` to create(at least 4 and up to 16 letters, contains only `A-Z`, `a-z`, `0-9`, `-` and `_`)
-    - title - room title(up to 16 letters)
-    - desc - room description(up to 20 letters)
+    - id - `stream_id` to create(at least 4 and up to 16 characters, contains only `A-Z`, `a-z`, `0-9`, `-` and `_`)
+    - title - room title(up to 16 characters)
+    - desc - room description(up to 20 characters)
     - tag - room tags (JSON string array e.g. "[\"tagA\", \"tagB\"]"), up to 20 tags, each tag should contain no `;` and no more than 20 characters, optional
   - __RESPONSE__
 
@@ -307,7 +311,7 @@ __NOTE: ONLY `application/x-www-form-urlencoded` IS ACCEPTED FOR `POST` REQUEST_
   - __EXPLANATION__
   Register a new account, will __NOT__ set `Authorization` cookies
   - __REQUEST__
-    - user - username to create(at least 4 and up to 16 letters, contains only `A-Z`, `a-z`, `0-9`, `-` and `_`)
+    - user - username to create(at least 4 and up to 16 characters, contains only `A-Z`, `a-z`, `0-9`, `-` and `_`)
     - email - email binded to the account
     - pass - password(at least 8 and up to 16 characters, must contain at least one alphabet, one number and one special character)
   - __RESPONSE__
@@ -363,9 +367,39 @@ __NOTE: ONLY `application/x-www-form-urlencoded` IS ACCEPTED FOR `POST` REQUEST_
 }
 ```
 
+## DANMAKU SYSTEM
+
+### Introduction
+
+__DANMAKU SYSTEM__ or __CHAT SYSTEM__ is literally a system allowing users to interact with others by chatting during live
+
+The Backend provides users with such a system based on `websocket` protocol
+
+### Implementation
+
+The chat websocket entry lies under `/chat/{room}`, where `{room}` should be substituted for `stream_id` of a room. That is to say, any __authorized__ request to such routes will get upgraded to `websocket` protocol
+
+```javascript
+let ws = new Websocket("ws://localhost/chat/demo_room");
+// listeners...
+```
+
+### Protocol
+
+Server will send a `Ping` message every 5 secs and client with no response within 10 secs will be kicked out.
+
+Except that, all informations are transferred through `Text`.
+
+- From Server
+  - `chat <user>;<message>` - chat `<message>` received from `<user>`, the first `;` is seen as a delimeter and others should be seen as part of the message body. Specially, if `<user>` is `0`, this is a room broadcast sent from server.
+- From Client
+  - `message <message>` - send messages to the room
+
 ## TODO
 
-- More appropriate error handling and rensponse
-- OAuth for authentication
-- Support streaming natively
-- Danmaku system implementation
+> __*__ stands for first priority
+
+- More appropriate error handling and rensponse __*__
+- OAuth for authentication(version 0.2 feature)
+- Support streaming natively(version ?)
+- Danmaku system implementation __*__

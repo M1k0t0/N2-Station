@@ -2,9 +2,14 @@
 
 use crate::ServerConfig;
 
-use super::{form, handler, Action};
+use super::{
+    danmaku::{CloseRoom, DanmakuSession, OpenRoom},
+    form, handler, Action, ChatServer,
+};
+use actix::Addr;
 use actix_identity::Identity;
-use actix_web::{get, post, web, HttpResponse};
+use actix_web::{get, post, web, Error, HttpRequest, HttpResponse};
+use actix_web_actors::ws;
 use fancy_regex::Regex;
 use form::{ChangePassword, LoginInfo, RegInfo};
 use lazy_static::lazy_static;
@@ -157,6 +162,7 @@ async fn open_room(
     config: web::Data<ServerConfig>,
     id: Identity,
     room: web::Form<form::RoomId>,
+    chat_svr: web::Data<Addr<ChatServer>>,
 ) -> HttpResponse {
     if let Some(uuid) = id.identity() {
         if handler::raw_open_rooms().await.unwrap() > config.room_open_limit {
@@ -172,6 +178,9 @@ async fn open_room(
         } else {
             if let Ok(affected) = handler::set_room_status(&room.id, true, &uuid).await {
                 if affected > 0 {
+                    chat_svr.get_ref().do_send(OpenRoom {
+                        room: room.id.clone(),
+                    });
                     let uuid = handler::assign_stream_token(&room.id).await.unwrap();
                     HttpResponse::Ok().json(Action::OpenRoom {
                         stream_token: uuid,
@@ -193,13 +202,20 @@ async fn open_room(
 }
 
 #[post("/api/user/closeRoom")]
-async fn close_room(id: Identity, room: web::Form<form::RoomId>) -> HttpResponse {
+async fn close_room(
+    id: Identity,
+    room: web::Form<form::RoomId>,
+    chat_svr: web::Data<Addr<ChatServer>>,
+) -> HttpResponse {
     if let Some(uuid) = id.identity() {
         if room.id.is_empty() {
             HttpResponse::Ok().json(Action::CloseRoom { status: -10 })
         } else {
             if let Ok(affected) = handler::set_room_status(&room.id, false, &uuid).await {
                 if affected > 0 {
+                    chat_svr.get_ref().do_send(CloseRoom {
+                        room: room.id.clone(),
+                    });
                     handler::unset_stream_token(&room.id).await.unwrap();
                     HttpResponse::Ok().json(Action::CloseRoom { status: 0 })
                 } else {
@@ -335,7 +351,46 @@ async fn nginx_callback(data: web::Query<NginxRtmpForm>) -> HttpResponse {
     }
 }
 
+#[get("/chat/{room}")]
+async fn upgrade_ws(
+    req: HttpRequest,
+    id: Identity,
+    path: web::Path<(String,)>,
+    stream: web::Payload,
+    svr: web::Data<Addr<ChatServer>>,
+) -> Result<HttpResponse, Error> {
+    if let Some(uuid) = id.identity() {
+        let (room,) = path.into_inner();
+        if let Ok(raw) = handler::raw_room_by_stream_name(&room).await {
+            if let Some(raw) = raw {
+                if raw.is_open() {
+                    if let Ok(Some(user)) =
+                        handler::search_user_by_uuid(Uuid::parse_str(&uuid).unwrap()).await
+                    {
+                        ws::start(
+                            DanmakuSession::new(&room, &user.name(), svr.get_ref().clone()),
+                            &req,
+                            stream,
+                        )
+                    } else {
+                        Ok(HttpResponse::InternalServerError().finish())
+                    }
+                } else {
+                    Ok(HttpResponse::Ok().body("Room is closed!"))
+                }
+            } else {
+                Ok(HttpResponse::Ok().body("No such room exists!"))
+            }
+        } else {
+            Ok(HttpResponse::InternalServerError().finish())
+        }
+    } else {
+        Ok(HttpResponse::Forbidden().finish())
+    }
+}
+
 pub fn init(cfg: &mut web::ServiceConfig) {
+    //TODO: improve routing with web::scope
     cfg.service(get_room_list)
         .service(get_room_info)
         .service(get_user_list)
@@ -350,5 +405,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
         .service(login)
         .service(logout)
         .service(change_password)
-        .service(nginx_callback);
+        .service(nginx_callback)
+        .service(upgrade_ws);
 }

@@ -224,6 +224,12 @@ pub mod response {
             }
         }
     }
+
+    impl BakedUser {
+        pub fn name(&self) -> String {
+            self.name.clone()
+        }
+    }
 }
 
 pub mod handler {

@@ -7,9 +7,6 @@
 			"problemMatcher": [
 				"$rustc"
 			],
-			"args": [
-				"--release"
-			],
 			"group": "build",
 			"label": "rust: cargo build",
 			"options": {

@@ -53,6 +53,7 @@ pub struct CloseRoom {
 }
 
 pub struct ChatServer {
+    peers: HashSet<String>,
     sessions: HashMap<usize, (String, String, Recipient<Message>)>,
     rooms: HashMap<String, HashSet<usize>>,
     rng: ThreadRng,
@@ -61,6 +62,7 @@ pub struct ChatServer {
 impl ChatServer {
     pub fn new() -> Self {
         Self {
+            peers: HashSet::new(),
             sessions: HashMap::new(),
             rooms: HashMap::new(),
             rng: rand::thread_rng(),
@@ -110,6 +112,9 @@ impl Handler<Connect> for ChatServer {
     type Result = usize;
 
     fn handle(&mut self, msg: Connect, _: &mut Self::Context) -> Self::Result {
+        if self.peers.contains(&msg.name) {
+            return 0;
+        }
         if self.rooms.contains_key(&msg.room) {
             let id = self.rng.gen_range(1..std::usize::MAX);
             self.broadcast_message(&msg.room, &format!("{} joined the room!", msg.name));
@@ -130,6 +135,7 @@ impl Handler<Disconnect> for ChatServer {
 
     fn handle(&mut self, msg: Disconnect, _: &mut Self::Context) -> Self::Result {
         if let Some((room, name, _)) = self.sessions.get(&msg.id) {
+            self.peers.remove(name);
             if let Some(sessions) = self.rooms.get_mut(room) {
                 sessions.remove(&msg.id);
                 self.broadcast_message(room, &format!("{} left the room!", name));
@@ -194,7 +200,14 @@ impl Actor for DanmakuSession {
             .into_actor(self)
             .then(|res, act, ctx| {
                 match res {
-                    Ok(res) => act.id = res,
+                    Ok(res) => {
+                        if res != 0 {
+                            act.id = res;
+                        } else {
+                            ctx.text("chat 0;Something went wrong...");
+                            ctx.stop();
+                        }
+                    }
                     _ => ctx.stop(),
                 }
                 fut::ready(())

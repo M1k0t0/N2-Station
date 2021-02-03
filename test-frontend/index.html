@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Very Low-B Client only for TEST!</title>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"
+        integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <h1 id="intro">Login</h1>
+    <form>
+        Email: <input type="text" id="email_input" /><br />
+        Password: <input type="password" id="password_input"><br />
+        <button type="button" id="login_button">Login</button>
+    </form>
+
+    <div style="background-color: gray; width: 100%; height: fit-content;">
+        <ul id="message_display">
+        </ul>
+    </div>
+    <input type="text" id="message_input" />
+    <button id="send">Send</button>
+    <button id="conn">Connect</button>
+</body>
+
+<script>
+    $(document).ready((_) => {
+        $("#login_button").on('click', (_) => {
+            $.ajax({
+                method: 'POST',
+                url: '/backend/api/auth/getToken',
+                async: true,
+                data: {
+                    email: $("#email_input").val(),
+                    key: $("#password_input").val(),
+                },
+                success: (data, status, xhr) => {
+                    if (data.status == 0) {
+                        $("#intro").text("Logged in");
+                    }
+                }
+            })
+        })
+        $("#conn").on('click', (_) => {
+            let websocket = new WebSocket("ws://localhost/danmaku/chat/test_room");
+            websocket.addEventListener("open", (_) => {
+                $("#message_display").append($("<li>Connection Established</li>"))
+            });
+            websocket.addEventListener("close", (_) => {
+                $("#message_display").append($("<li>Connection Disposed</li>"))
+            });
+            websocket.addEventListener("message", (ev) => {
+                $("#message_display").append($(`<li>${ev.data}</li>`))
+            })
+            $("#send").on('click', (_) => {
+                websocket.send(`message ${$("#message_input").val()}`)
+            })
+        })
+    })
+</script>
+
+</html>

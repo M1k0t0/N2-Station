@@ -8,6 +8,7 @@ use actix_web::{
 };
 use anyhow::Result;
 use argh::FromArgs;
+use cookie::SameSite;
 use log::LevelFilter;
 
 mod backend;
@@ -84,7 +85,8 @@ async fn main() -> Result<()> {
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&[0; 32])
                     .name("Authorization")
-                    .secure(config.authorization_force_https),
+                    .secure(config.authorization_force_https)
+                    .same_site(SameSite::None),
             ))
             .data(config.clone())
             .data(danmaku.clone())

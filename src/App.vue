@@ -7,13 +7,13 @@
         </v-system-bar>
 
         <v-navigation-drawer
-            color="grey darken-3"
+            color="grey darken-4"
             v-model="primaryDrawer.model"
             app
             width="300"
             floating
             >
-            <v-navigation-drawer
+            <!-- <v-navigation-drawer
                     v-model="primaryDrawer.model"
                     :clipped="primaryDrawer.clipped"
                     :floating="primaryDrawer.floating"
@@ -22,24 +22,25 @@
                     :expand-on-hover="false"
                     absolute
                     color="grey darken-4"
-            >
+            > -->
+            <v-row justify="center">
+                <v-col cols="3" color="grey darken-4" class="pa-0">
                 <v-avatar
-                class="d-block text-center mx-auto mt-4"
+                class="d-block text-center mt-4 mx-6"
                 color="grey darken-1"
                 size="47"
                 rounded
                 @click="clearSource(); routeTo('/welcome')"
                 ><v-icon>fa-hashtag</v-icon></v-avatar>
 
-                <v-divider class="mx-3 my-5"></v-divider>
+                <v-divider class="ml-6 mr-3 my-5"></v-divider>
                 
                 <div 
                 v-for="item in $root.roomList"
                 :key="item.title"
-                class="text-center">
+                class="text-center ml-6 mr-3">
                     <v-badge 
                     bordered
-                    avatar
                     overlap
                     :color="item.status=='open'?'red':'grey'" 
                     :icon="item.status=='open'?'mdi-broadcast':'mdi-broadcast-off'"
@@ -55,27 +56,27 @@
                             icon 
                             @click="$root.sfmode?routeTo('/live/',item.stream_id):routeTo('/live/',item.id)"
                             style="margin-top:1px;">
-                                <img
+                                <!-- <img
                                     src=""
                                     style="width:40px!important; height:40px!important; margin-top:2px;"
                                     class="ml-5"
-                                >
+                                > -->
                                 
                                 <!-- <v-icon v-if="item.status=='open'" class="mx-auto my-auto">mdi-broadcast</!-->
-                                <!-- <v-icon v-if="item.status=='close'" class="mx-auto my-auto">mdi-broadcast-off</v-icon> --> -->
+                                <!-- <v-icon v-if="item.status=='close'" class="mx-auto my-auto">mdi-broadcast-off</v-icon> -->
                             </v-btn>
                         </v-avatar>
                     </v-badge>
                 </div>
-            </v-navigation-drawer>
-
+            </v-col>
+            <!-- </v-navigation-drawer> -->
+            <v-col cols="9" class="pa-0">
             <v-sheet
             color="grey darken-4"
             height="120"
             width="100%"
             align="center"
             justify="center"
-            style="padding-left:73px;"
             tile
             >
             <v-card flat>
@@ -103,7 +104,7 @@
             </v-sheet>
 
             <v-list
-                style="padding-left:75px; margin-top: 16px;"
+                style="margin-top: 0px;"
                 shaped
             >
                 <v-list-item
@@ -130,6 +131,8 @@
                 </v-list-item-content>
                 </v-list-item>
             </v-list>
+            </v-col>
+            </v-row>
         </v-navigation-drawer>
 
         <v-app-bar
@@ -138,16 +141,16 @@
             app
         >
         <v-row justify="space-between">
-            <v-col xs="3" md="3" class="my-auto">
+            <v-col xs="3" md="3" sm="1" class="my-auto">
                 <v-btn
-                    @click.stop="primaryDrawer.model = !primaryDrawer.model"
+                    @click.stop="primaryDrawer.model = !primaryDrawer.model;  primaryDrawer.model2=!primaryDrawer.model2;"
                     v-if="!primaryDrawer.model"
                     icon
                 >
                     <v-icon>fa-chevron-right</v-icon>
                 </v-btn>
                 <v-btn
-                    @click.stop="primaryDrawer.model = !primaryDrawer.model"
+                    @click.stop="primaryDrawer.model = !primaryDrawer.model; primaryDrawer.model2=!primaryDrawer.model2;"
                     v-if="primaryDrawer.model"
                     icon
                 >
@@ -155,13 +158,13 @@
                 </v-btn>
             </v-col>
 
-            <v-col xs="4" md="4">
+            <v-col xs="4" md="4" sm="10">
                 <div class="text-center">
                     <v-breadcrumbs :items="$root.bread" color="white" style="color: white!important;"></v-breadcrumbs>
                 </div>
             </v-col>
             <v-spacer></v-spacer>
-            <v-col xs="1" md="1" class="my-auto text-end">
+            <v-col xs="1" md="1" sm="1" class="my-auto text-end">
                 <v-btn icon @click="routeTo('/login')">
                     <v-icon>mdi-login-variant</v-icon>
                 </v-btn>
@@ -252,6 +255,8 @@ export default {
         }
     },
     mounted () {
+        if(this.$route.path=='/')
+            this.routeTo('/welcome');
         this.getRoomList();
         this.getTagList();
     }

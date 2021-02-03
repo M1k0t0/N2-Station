@@ -380,7 +380,7 @@ The Backend provides users with such a system based on `websocket` protocol
 The chat websocket entry lies under `/chat/{room}`, where `{room}` should be substituted for `stream_id` of a room. That is to say, any __authorized__ request to such routes will get upgraded to `websocket` protocol
 
 ```javascript
-let ws = new Websocket("ws://localhost/chat/demo_room");
+let ws = new WebSocket("ws://localhost/chat/demo_room");
 // listeners...
 ```
 

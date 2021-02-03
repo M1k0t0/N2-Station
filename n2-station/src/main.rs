@@ -2,7 +2,7 @@ use actix::Actor;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{
     dev::Service,
-    http::header::{HeaderValue, ACCESS_CONTROL_ALLOW_ORIGIN},
+    http::header::{HeaderValue, ACCESS_CONTROL_ALLOW_CREDENTIALS, ACCESS_CONTROL_ALLOW_ORIGIN},
     middleware::Logger,
     web, App, HttpServer,
 };
@@ -33,7 +33,8 @@ struct ServerConfig {
     room_creation_limit: u64,
     room_open_limit: u64,
     authorization_force_https: bool,
-    debug: bool,
+    allow_origin: String,
+    allow_credential: bool,
 }
 
 #[actix_web::main]
@@ -68,10 +69,14 @@ async fn main() -> Result<()> {
                 let fut = srv.call(req);
                 async move {
                     let mut res = fut.await?;
-                    if cfg.debug {
-                        res.headers_mut()
-                            .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
-                    }
+                    res.headers_mut().insert(
+                        ACCESS_CONTROL_ALLOW_ORIGIN,
+                        HeaderValue::from_str(&cfg.allow_origin.clone()).unwrap(),
+                    );
+                    res.headers_mut().insert(
+                        ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                        HeaderValue::from_str(&cfg.allow_credential.to_string()).unwrap(),
+                    );
                     Ok(res)
                 }
             })

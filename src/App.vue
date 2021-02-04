@@ -73,15 +73,28 @@
             <v-col cols="9" class="pa-0">
             <v-sheet
             color="grey darken-4"
-            height="120"
+            height="70"
             width="100%"
             align="center"
             justify="center"
             tile
             >
             <v-card flat>
-                <v-subheader>快速进入</v-subheader>
-                <v-snackbar
+                <v-responsive max-width="156" min-width="80%" class="mx-auto">
+                    <v-text-field
+                    dense
+                    flat
+                    hide-details
+                    rounded
+                    solo-inverted
+                    label="搜索"
+                    style="margin-top:13px; margin-bottom:13px;"
+                    @blur="on_search=true"
+                    width="100%"
+                    ></v-text-field>
+                </v-responsive>
+
+                <!-- <v-snackbar
                     v-model="error_snackbar"
                     top
                     absolute
@@ -94,12 +107,12 @@
                 v-model="player.id"
                 append-outer-icon='mdi-bus'
                 @click:append-outer="goToRoom()"
-                label="RoomID"
+                label="快速进入房间"
                 class="mt-0 pt-0 pl-4 pr-3"
                 color="white"
                 >
 
-                </v-text-field>
+                </v-text-field> -->
             </v-card>
             </v-sheet>
 
@@ -209,7 +222,8 @@ export default {
             error: null
         },
         tagList:{ 'open': [], 'close': [] },
-        error_snackbar: false
+        error_snackbar: false,
+        on_search:false
     }),
     methods:{
         clearSource(){

@@ -7,7 +7,7 @@
         ref="form"
         v-model="valid"
         lazy-validation
-        class="pa-10"
+        class="pa-6"
       >
         <v-text-field
           v-model="name"
@@ -16,6 +16,7 @@
           label="Username"
           required
           color="white"
+          v-if="func=='register'"
         ></v-text-field>
 
         <v-text-field
@@ -24,6 +25,7 @@
           label="E-mail (for gravatar)"
           required
           color="white"
+          v-if="func=='register'"
         ></v-text-field>
 
         <v-text-field
@@ -33,6 +35,7 @@
           type="password"
           required
           color="white"
+          v-if="func=='register'"
         ></v-text-field>
 
         <v-checkbox
@@ -41,31 +44,73 @@
           label="No password reset system! Do you agree?"
           required
           color="white"
+          v-if="func=='register'"
         ></v-checkbox>
 
-        <v-btn
-          :disabled="!valid"
-          color="success"
-          class="mr-4"
-          @click="validate"
-        >
-          Validate
-        </v-btn>
+        <v-row>
+          <v-col>
+            <v-btn
+              color="white"
+              @click="func='login';"
+              v-if="func=='register'"
+              icon
+            >
+              <v-icon>mdi-account</v-icon>
+            </v-btn>
+          </v-col>
+          <v-spacer></v-spacer>
+          <v-col class="text-end">
+            <v-btn
+              :disabled="!valid"
+              color="success"
+              class="mr-4"
+              @click="register"
+              v-if="func=='register'"
+            >
+              register
+            </v-btn>
+          </v-col>
+        </v-row>
 
-        <v-btn
-          color="error"
-          class="mr-4"
-          @click="reset"
-        >
-          Reset Form
-        </v-btn>
+        <v-text-field
+          v-model="credentials"
+          label="Login credentials"
+          required
+          color="white"
+          v-if="func=='login'"
+        ></v-text-field>
 
-        <v-btn
-          color="warning"
-          @click="resetValidation"
-        >
-          Reset Validation
-        </v-btn>
+        <v-text-field
+          v-model="password"
+          label="Password"
+          type="password"
+          required
+          color="white"
+          v-if="func=='login'"
+        ></v-text-field>
+        <v-row>
+          <v-col>
+            <v-btn
+              color="white"
+              @click="func='register'; resetValidation();"
+              v-if="func=='login'"
+              icon
+            >
+              <v-icon>mdi-account-plus</v-icon>
+            </v-btn>
+          </v-col>
+          <v-spacer></v-spacer>
+          <v-col class="text-end">
+            <v-btn
+              :disabled="!password && !credentials"
+              color="success"
+              @click="login"
+              v-if="func=='login'"
+            >
+              login
+            </v-btn>
+          </v-col>
+        </v-row>
       </v-form>
       </v-card>
       </v-col>
@@ -93,8 +138,9 @@
         v => /^.*(?=.{8,16})(?=.*\d)(?=.*[A-Za-z]{2,}).*$/.test(v)  || 'Password must be /^.*(?=.{8,16})(?=.*\\d)(?=.*[A-Za-z]{2,}).*$/'
       ],
       checkbox: false,
+      func: 'login',
+      credential: null
     }),
-
     methods: {
       validate () {
         this.$refs.form.validate()
@@ -105,6 +151,13 @@
       resetValidation () {
         this.$refs.form.resetValidation()
       },
+    },
+    mounted(){
+        this.$set(this.$root.bread,1,{
+            text: 'Login',
+            disabled: true,
+            href: '#/login',
+        });
     },
   }
 </script>

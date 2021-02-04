@@ -7,6 +7,7 @@
         </v-system-bar>
 
         <v-navigation-drawer
+        style="padding-top:12px;"
             color="grey darken-4"
             v-model="primaryDrawer.model"
             app
@@ -27,6 +28,7 @@
                 <v-col cols="3" color="grey darken-4" class="pa-0">
                 <v-avatar
                 class="d-block text-center mt-4 mx-6"
+                style="border-radius: 47px !important;"
                 color="grey darken-1"
                 size="47"
                 rounded
@@ -51,7 +53,6 @@
                         color="grey lighten-1"
                         size="40"
                         >
-                        
                             <v-btn 
                             icon 
                             @click="$root.sfmode?routeTo('/live/',item.stream_id):routeTo('/live/',item.id)"
@@ -78,9 +79,10 @@
             align="center"
             justify="center"
             tile
+            style="padding-top:7px;margin-left:-12px;"
             >
-            <v-card flat>
-                <v-responsive max-width="156" min-width="80%" class="mx-auto">
+            <v-card flat class="background-color: transparent !important;">
+                <v-responsive max-width="200" min-width="80%">
                     <v-text-field
                     dense
                     flat
@@ -117,7 +119,7 @@
             </v-sheet>
 
             <v-list
-                style="margin-top: 0px;"
+                style="margin-top: 0px;margin-right:5px;"
                 shaped
             >
                 <v-list-item
@@ -332,5 +334,8 @@ export default {
 }
 .v-application a {
     color: inherit !important;
+}
+.v-badge__badge .v-icon {
+    font-size: 12px !important;
 }
 </style>

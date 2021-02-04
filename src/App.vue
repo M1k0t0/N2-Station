@@ -8,12 +8,12 @@
 
         <v-navigation-drawer
         style="padding-top:12px;"
-            color="grey darken-4"
-            v-model="primaryDrawer.model"
-            app
-            width="300"
-            floating
-            >
+        color="grey darken-4"
+        v-model="primaryDrawer.model"
+        app
+        width="300"
+        floating
+        >
             <!-- <v-navigation-drawer
                     v-model="primaryDrawer.model"
                     :clipped="primaryDrawer.clipped"
@@ -27,8 +27,8 @@
             <v-row justify="center">
                 <v-col cols="3" color="grey darken-4" class="pa-0">
                 <v-avatar
-                class="d-block text-center mt-4 mx-6"
-                style="border-radius: 47px !important;"
+                class="d-block text-center mt-0 mx-6"
+                style="border-radius: 14.97px !important;"
                 color="grey darken-1"
                 size="47"
                 rounded
@@ -81,7 +81,7 @@
             tile
             style="padding-top:7px;margin-left:-12px;"
             >
-            <v-card flat class="background-color: transparent !important;">
+            <v-card flat style="background-color: transparent !important;" class="mt-n1">
                 <v-responsive max-width="200" min-width="80%">
                     <v-text-field
                     dense
@@ -90,7 +90,7 @@
                     rounded
                     solo-inverted
                     label="搜索"
-                    style="margin-top:13px; margin-bottom:13px;"
+                    style="margin-top:0px; margin-bottom:13px;"
                     @blur="on_search=true"
                     width="100%"
                     ></v-text-field>

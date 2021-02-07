@@ -24,7 +24,7 @@
                     absolute
                     color="grey darken-4"
             > -->
-            <v-row justify="center">
+            <v-row justify="center" class="fill-height">
                 <v-col cols="3" color="grey darken-4" class="pa-0">
                 <v-avatar
                 class="d-block text-center mt-0 mx-6"
@@ -32,7 +32,7 @@
                 color="grey darken-1"
                 size="47"
                 rounded
-                @click="clearSource(); routeTo('/welcome')"
+                @click="clearSource(); updateRoomList(); routeTo('/welcome');"
                 ><v-icon>fa-hashtag</v-icon></v-avatar>
 
                 <v-divider class="ml-6 mr-3 my-5"></v-divider>
@@ -118,34 +118,8 @@
             </v-card>
             </v-sheet>
 
-            <v-list
-                style="margin-top: 0px;margin-right:5px;"
-                shaped
-            >
-                <v-list-item
-                v-for="tag in tagList.open"
-                :key="tag"
-                link
-                @click="routeTo('/tag/',tag)"
-                >
-                <v-list-item-content>
-                    <v-list-item-subtitle># {{ tag }}</v-list-item-subtitle>
-                </v-list-item-content>
-                </v-list-item>
-
-                <v-divider class="mx-3 my-5" v-if="tagList.open.length"></v-divider>
-
-                <v-list-item
-                v-for="tag in tagList.close"
-                :key="tag"
-                link
-                @click="routeTo('/tag/',tag)"
-                >
-                <v-list-item-content>
-                    <v-list-item-subtitle># {{ tag }}</v-list-item-subtitle>
-                </v-list-item-content>
-                </v-list-item>
-            </v-list>
+            <router-view name="listTagItems"></router-view>
+            
             </v-col>
             </v-row>
         </v-navigation-drawer>
@@ -173,7 +147,7 @@
                 </v-btn>
             </v-col>
 
-            <v-col xs="4" md="4" sm="10">
+            <v-col xs="4" md="4" sm="10" class="col-me-manual-50">
                 <div class="text-center">
                     <v-breadcrumbs :items="$root.bread" color="white" style="color: white!important;"></v-breadcrumbs>
                 </div>
@@ -202,7 +176,7 @@
 
 <script>
 
-import axios from 'axios';
+// import axios from 'axios';
 // import global_ from './components/Global';
 
 export default {
@@ -223,7 +197,6 @@ export default {
             id: null,
             error: null
         },
-        tagList:{ 'open': [], 'close': [] },
         error_snackbar: false,
         on_search:false
     }),
@@ -234,47 +207,25 @@ export default {
                 this.$root.flvPlayer=null;
             }
         },
-        getRoomList(){
-            axios
-            .get(this.$root.backend+'/api/info/room')
-            .then(response => {
-                this.$root.roomList = this.$root.sfmode ? response.data.rooms : response.data.data;
-            })
-            .catch(error => {
-                console.log(error);
-                this.errored = true;
-            })
-            .finally(() => this.loading = false);
-        },
-        getTagList(){
-            axios
-            .get(this.$root.backend+'/api/info/tag')
-            .then(response => {
-                this.tagList = response.data.data;
-            })
-            .catch(error => {
-                console.log(error);
-                this.errored = true;
-            })
-            .finally(() => { this.loading = false; });
-        },
-        routeTo(base, data=''){
-            this.$router.push({
-                path: base+data,
-            })
+        updateRoomList(){
+            this.global_.request.getRoomList(this);
         },
         goToRoom(){
             if(this.$root.roomList[this.player.id]==undefined)
                 this.error_snackbar=true;
             else
                 this.routeTo('/live/',this.player.id)
+        },
+        routeTo(base, data=''){
+            this.$router.push({
+                path: base+data,
+            })
         }
     },
     mounted () {
         if(this.$route.path=='/')
             this.routeTo('/welcome');
-        this.getRoomList();
-        this.getTagList();
+        this.global_.request.getRoomList(this);
     }
 }
 </script>
@@ -332,10 +283,16 @@ export default {
 .col-me {
     flex-basis: auto !important;
 }
+.col-me-manual-50 {
+    flex-basis: 50% !important;
+}
 .v-application a {
     color: inherit !important;
 }
 .v-badge__badge .v-icon {
     font-size: 12px !important;
+}
+.flip-list-move {
+    transition: transform 1s;
 }
 </style>

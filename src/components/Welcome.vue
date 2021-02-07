@@ -1,9 +1,9 @@
 <template>
     <v-container fluid>
-            <v-row
-                    align="center"
-                    justify="center"
-            >
+        <v-row
+                align="center"
+                justify="center"
+        >
             <v-col sm="12" md="10" class="col-me">
                 <v-card shaped tile>
                     <div class="pl-4 pb-2 pt-2">
@@ -42,8 +42,7 @@
     </v-container>
 </template>
 <script>
-import global_ from './Global';
-import axios from 'axios';
+// import axios from 'axios';
 
 export default {
     data: () => ({
@@ -51,25 +50,13 @@ export default {
     }),
     methods: {
         resetBackendAddress(){
-            this.$root.backend=this.$root.sfmode ? global_.BackendAddress : global_.debugBackendAddress;
+            this.$root.backend=this.$root.sfmode ? this.global_.BackendAddress : this.global_.debugBackendAddress;
             this.flushBackendAPI();
         },
         flushBackendAPI(){
-            this.getRoomList();
-            if(this.$root.backend==global_.debugBackendAddress) this.$root.sfmode=false;
+            this.global_.request.getRoomList(this);
+            if(this.$root.backend==this.global_.debugBackendAddress) this.$root.sfmode=false;
             else this.$root.sfmode=true;
-        },
-        getRoomList(){
-            axios
-            .get(this.$root.backend+'/api/info/room')
-            .then(response => {
-                this.$root.roomList = this.$root.sfmode ? response.data.rooms : response.data.data;
-            })
-            .catch(error => {
-                console.log(error);
-                this.errored = true;
-            })
-            .finally(() => this.loading = false);
         },
         getAPIFormat(){
             return this.$root.sfmode?"SF":"CK";

@@ -1,17 +1,47 @@
 <template>
-  <v-container fill-height>
-    <v-row align="center" justify="center">
-      <v-col xs="4" md="6" sm="10" class="col-me">
-      <v-card>
+  <v-container fill-height class="align-center justify-center">
+    <v-snackbar
+    absolute
+    top
+    :timeout=1145141919
+    v-model="error_snackbar"
+    >
+      {{ error_msg }}
+      <v-btn
+        color="pink"
+        text
+        @click="error_snackbar = false"
+      >
+        Close
+      </v-btn>
+    </v-snackbar>
+    <v-snackbar
+    absolute
+    top
+    :timeout=1145141919
+    v-model="info_snackbar"
+    >
+      登录成功
+      <v-btn
+        color="pink"
+        text
+        @click="info_snackbar = false"
+      >
+        Close
+      </v-btn>
+    </v-snackbar>
+    <v-row justify="center" align="center">
+      <v-col xs="6" md="6" sm="10" class="col-me">
+      <v-card class="pt-6 pl-6 pr-6 pb-0">
+      
       <v-form
         ref="form"
         v-model="valid"
         lazy-validation
-        class="pt-6 pl-6 pr-6 pb-0"
       >
         <v-text-field
           v-model="name"
-          :counter="10"
+          :counter="16"
           :rules="nameRules"
           label="Username"
           required
@@ -77,6 +107,8 @@
           required
           color="white"
           v-if="action=='login'"
+          @click="block_button_for_attention=false;"
+          :error="block_button_for_attention && !info_snackbar"
         ></v-text-field>
 
         <v-text-field
@@ -86,6 +118,8 @@
           required
           color="white"
           v-if="action=='login'"
+          @click="block_button_for_attention=false;"
+          :error="block_button_for_attention && !info_snackbar"
         ></v-text-field>
         <v-row class="pb-6">
           <v-col>
@@ -101,9 +135,10 @@
           <v-spacer></v-spacer>
           <v-col class="text-end">
             <v-btn
-              :disabled="!password || !credentials"
+              :loading="loading"
+              :disabled="!password || !credentials || loading || block_button_for_attention"
               color="success"
-              @click="login"
+              @click="getToken(credentials,password)"
               v-if="action=='login'"
             >
               login
@@ -118,46 +153,94 @@
 </template>
 
 <script>
-  export default {
-    data: () => ({
-      valid: false,
-      name: '',
-      nameRules: [
-        v => !!v || 'Name is required',
-        v => (v && v.length <= 10) || 'Name must be less than 10 characters',
-      ],
-      email: '',
-      emailRules: [
-        v => !!v || 'E-mail is required',
-        v => /.+@.+\..+/.test(v) || 'E-mail must be valid',
-      ],
-      password: '',
-      passwordRules:[
-        v => !!v || 'Password is required',
-        v => /^.*(?=.{8,16})(?=.*\d)(?=.*[A-Za-z]{2,}).*$/.test(v)  || 'Password must be /^.*(?=.{8,16})(?=.*\\d)(?=.*[A-Za-z]{2,}).*$/'
-      ],
-      checkbox: false,
-      action: 'login',
-      credential: null
-    }),
-    methods: {
-      validate () {
-        this.$refs.form.validate()
-      },
-      reset () {
-        this.$refs.form.reset()
-      },
-      resetValidation () {
-        this.$refs.form.resetValidation()
-        this.valid=false;
-      },
+import global_ from './Global';
+import axios from 'axios';
+axios.defaults.withCredentials = true;
+
+export default {
+  data: () => ({
+    valid: false,
+    name: '',
+    nameRules: [
+      v => !!v || 'Name is required',
+      v => (v && v.length <= 16 && v.indexOf('@')==-1) || 'Name must be less than 16 characters without "@"',
+    ],
+    email: '',
+    emailRules: [
+      v => !!v || 'E-mail is required',
+      v => /.+@.+\..+/.test(v) || 'E-mail must be valid',
+    ],
+    password: '',
+    passwordRules:[
+      v => !!v || 'Password is required',
+      v => /^.*(?=.{8,16})(?=.*\d)(?=.*[A-Za-z]{2,}).*$/.test(v)  || 'Password must be /^.*(?=.{8,16})(?=.*\\d)(?=.*[A-Za-z]{2,}).*$/'
+    ],
+    checkbox: false,
+    action: 'login',
+    credential: null,
+    error_msg: '',
+    ok: false,
+    loading: false,
+    error_snackbar: false,
+    info_snackbar: false,
+    block_button_for_attention: false
+  }),
+  methods: {
+    validate () {
+      this.$refs.form.validate()
     },
-    mounted(){
-        this.$set(this.$root.bread,1,{
-            text: 'Login',
-            disabled: true,
-            href: '#/login',
-        });
+    reset () {
+      this.$refs.form.reset()
     },
-  }
+    resetValidation () {
+      this.$refs.form.resetValidation()
+      this.valid=false;
+    },
+    getToken(credentials,password){
+      this.loading=true;
+      var data;
+      if(credentials.indexOf('@')!=-1)
+        data={"email":credentials,"pass":password}
+      else
+        data={"name":credentials,"pass":password}
+      axios
+      .post(this.$root.backend+'/api/auth/getToken',data)
+      .then(response => {
+        if(response.data.status!=0){
+          this.error_msg='登录失败，'+global_.get_err_msg(response.data.action,response.data.status);
+          this.error_snackbar=true;
+        }else{
+          this.ok=true;
+          this.info_snackbar=true;
+        }
+        this.block_button_for_attention=true;
+      })
+      .catch(error => {
+          console.log(error);
+          this.errored = true;
+      })
+      .finally(() => {
+        this.loading = false;
+        setTimeout(() => this.routeTo('/panel/rooms'), 1000)
+      });
+    },
+    routeTo(base, data=''){
+      this.$router.push({
+          path: base+data,
+      })
+    }
+  },
+  mounted(){
+    if(this.global_.getCookie('Authorization')){
+      this.error_msg='已登录，正在跳转...';
+      this.error_snackbar=true;
+      setTimeout(() => this.routeTo('/panel/rooms'), 1000)
+    }
+    this.$set(this.$root.bread,1,{
+        text: 'Login',
+        disabled: true,
+        href: '#/login',
+    });
+  },
+}
 </script>

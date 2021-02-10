@@ -78,20 +78,14 @@ pub mod response {
         stream_token: Option<String>,
     }
 
-    #[derive(serde::Serialize, Default)]
-    pub struct User {
-        id: Uuid,
-        name: String,
-    }
-
-    #[derive(serde::Serialize, Default)]
+    #[derive(serde::Serialize)]
     pub struct BakedRoom {
         stream_id: String,
         title: String,
         desc: String,
         tag: Vec<String>,
         status: String,
-        user: User,
+        user: BakedUser,
         stream_token: Option<Uuid>,
     }
 
@@ -175,7 +169,7 @@ pub mod response {
                 desc: self.description.clone(),
                 tag: tag,
                 status: status.to_string(),
-                user: raw.into(),
+                user: raw.bake(),
                 stream_token,
             })
         }
@@ -212,15 +206,6 @@ pub mod response {
                 id: Uuid::parse_str(self.uuid.as_str()).unwrap(),
                 name: self.username.clone(),
                 email: self.email.clone(),
-            }
-        }
-    }
-
-    impl From<RawUser> for User {
-        fn from(raw: RawUser) -> Self {
-            Self {
-                id: Uuid::parse_str(raw.uuid.as_str()).unwrap(),
-                name: raw.username,
             }
         }
     }

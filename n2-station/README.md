@@ -120,15 +120,6 @@ __NOTE: ONLY `application/x-www-form-urlencoded` IS ACCEPTED FOR `POST` REQUEST_
 
 #### Common Data Structure
 
-- Simple User
-
-```json5
-{
-    "id": "<hyphenated-uuid>", //Unique id of user
-    "name": "<string>" //Nickname of user
-}
-```
-
 - User
 
 ```json5
@@ -150,7 +141,7 @@ __NOTE: ONLY `application/x-www-form-urlencoded` IS ACCEPTED FOR `POST` REQUEST_
     "desc": "<string>", //Room description
     "tag": ["<string>"], //Room tags, may be `null`
     "status": "<open/close>", //Room status
-    "user": "<simple-user>", //Owner information
+    "user": "<user>", //Owner information
     "stream_token": "<hyphenated-uuid>"//Verification token of the room. `null` if not detailed
 }
 ```

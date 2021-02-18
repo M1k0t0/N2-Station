@@ -108,7 +108,7 @@ def getToken():
     try:
         user=User(db, content)
     except BaseException as e:
-        return jsonify(utils.simple_reply("getToken",str(e))), 403
+        return jsonify(utils.simple_reply("getToken",str(e)))
     
     if "pass" not in content:
         return jsonify(utils.simple_reply("getToken", -10))
@@ -117,7 +117,7 @@ def getToken():
         response=jsonify(utils.simple_reply("getToken",0))
         response.set_cookie('Authorization',user.generate_token(),expires=utils.get_date_after(90))
         return response
-    return jsonify(utils.simple_reply("getToken",-1)), 403
+    return jsonify(utils.simple_reply("getToken",-1))
 
 @auth.route('/api/auth/destroyToken', methods=["GET","POST"])
 def destroyToken():

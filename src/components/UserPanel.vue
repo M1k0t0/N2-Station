@@ -43,7 +43,7 @@
                 Toggle Status
             </v-btn>
             <v-btn
-                class="mt-12 ml-4"
+                class="mt-12 ml-4 pr-4"
                 color="warning"
                 @click="editRoomInfo(room.id)"
             >

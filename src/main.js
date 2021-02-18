@@ -1,11 +1,13 @@
 import Vue from 'vue'
 import App from './App.vue'
 import vuetify from './plugins/vuetify';
+import Gravatar from 'vue-gravatar';
 import router from './router'
 import global_ from './components/Global';
 
-Vue.config.productionTip = false
-Vue.prototype.global_ = global_
+Vue.config.productionTip = false;
+Vue.prototype.global_ = global_;
+Vue.component('v-gravatar', Gravatar);
 
 new Vue({
   vuetify,

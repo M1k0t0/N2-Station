@@ -1,30 +1,33 @@
 <template>
-    <v-container fluid fill-height>
+    <v-container fluid fill-height class="align-center justify-center">
         <v-row
             align="center"
             justify="center"
             class="fill-height"
         >
-            <v-col sm="12" md="11" class="fill-height">
-                <v-card tile class="pt-3 pl-3 pb-1 pr-3" height="90%">
+            <v-col sm="12" md="11" class="pb-1 fill-height">
+                <v-card tile class="pt-3 pl-3 pr-3 pb-12" height="90%">
                     <v-row
                         align="center"
                         justify="center"
                     >
                         <v-col sm="12" md="8" id="videoFrame" class="col-me">
                             <video
+                            class="pl-sm-12 pr-sm-12 pt-sm-0 pb-sm-0"
                             width="100%"
                             height="auto"
                             id="videoElement" controls autoplay>
                                 Your browser is too old which doesn't support HTML5 video.
                             </video>
+                            <v-gravatar v-if="$root.roomList[$route.params.id]" class=" ml-sm-12 mt-3 mb-3 mt-md-7 mb-md-7" size="60" :email="$root.roomList[$route.params.id].user.email" style="border-radius: 60px;" />
+                            <p v-if="$root.roomList[$route.params.id]" style="font-size: 25px; margin-left: 130px; margin-top: -83px;">{{$root.roomList[$route.params.id].user.name}}</p>
                         </v-col>
                         <v-spacer />
-                        <v-col sm="12" md="4" class="col-me">
-                            <v-card tile id="chatBox" class="pt-1 pb-1" height="80%">
-                                <v-card outline id="chatContent" height="80%" class="ml-2 mr-2 mt-0 mb-2">
+                        <v-col sm="12" md="4" class="col-me pb-8">
+                            <v-card tile id="chatBox" class="pt-2 pb-6 ml-md-0 mr-md-0 ml-sm-12 mr-sm-12 ml-1 mr-1" height="200px">
+                                <v-card outline id="chatContent" height="80%" class="ml-2 mr-2 mt-0 mb-0">
                                 </v-card>
-                                <v-row class="py-5">
+                                <v-row class="py-5 py-sm-0 mx-auto">
                                 <v-col cols="9" class="pt-0 pr-0">
                                     <v-text-field color="white" label="Commit" class="ml-2 mr-2 pt-0 mt-0"></v-text-field>
                                 </v-col>

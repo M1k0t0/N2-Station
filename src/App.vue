@@ -38,7 +38,7 @@
                 <v-divider class="ml-6 mr-3 my-5"></v-divider>
                 
                 <div 
-                v-for="item in $root.roomList"
+                v-for="item in sortedRoomList"
                 :key="item.title"
                 class="text-center ml-6 mr-3">
                     <v-badge 
@@ -53,19 +53,26 @@
                         color="grey lighten-1"
                         size="40"
                         >
-                            <v-btn 
-                            icon 
-                            @click="$root.sfmode?routeTo('/live/',item.stream_id):routeTo('/live/',item.id)"
-                            style="margin-top:1px;">
-                                <!-- <img
-                                    src=""
-                                    style="width:40px!important; height:40px!important; margin-top:2px;"
-                                    class="ml-5"
-                                > -->
-                                
-                                <!-- <v-icon v-if="item.status=='open'" class="mx-auto my-auto">mdi-broadcast</!-->
-                                <!-- <v-icon v-if="item.status=='close'" class="mx-auto my-auto">mdi-broadcast-off</v-icon> -->
-                            </v-btn>
+                            <v-tooltip right>
+                                <template v-slot:activator="{ on, attrs }">
+                                    <v-btn 
+                                    v-bind="attrs"
+                                    v-on="on"
+                                    icon 
+                                    @click="$root.sfmode?routeTo('/live/',item.stream_id):routeTo('/live/',item.id)"
+                                    style="margin-top:1px;">
+                                        <!-- <img
+                                            src=""
+                                            style="width:40px!important; height:40px!important; margin-top:2px;"
+                                            class="ml-5"
+                                        > -->
+                                        
+                                        <!-- <v-icon v-if="item.status=='open'" class="mx-auto my-auto">mdi-broadcast</!-->
+                                        <!-- <v-icon v-if="item.status=='close'" class="mx-auto my-auto">mdi-broadcast-off</v-icon> -->
+                                    </v-btn>
+                                </template>
+                                <span>{{item.title}}</span>
+                            </v-tooltip>
                         </v-avatar>
                     </v-badge>
                 </div>
@@ -222,10 +229,17 @@ export default {
             })
         }
     },
-    mounted () {
+    created () {
         if(this.$route.path=='/')
             this.routeTo('/welcome');
         this.global_.request.getRoomList(this);
+    },
+    computed: {
+        sortedRoomList() {
+            return Object.values(this.$root.roomList).slice().sort((e1,e2) => {
+                return e1.status=="open"?-1:e2.status=="open"?1:0;
+            });
+        }
     }
 }
 </script>

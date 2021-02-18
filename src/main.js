@@ -28,6 +28,7 @@ new Vue({
     ],
     userRoomList: {},
     openRoom: {},
-    closeRoom: {}
+    closeRoom: {},
+    panelMenuIndex: 0
   })
 }).$mount('#app')

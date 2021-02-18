@@ -7,6 +7,12 @@ import TagSort from '@/components/TagSort'
 import TagItems from '@/components/TagItems'
 import UserPanel from '@/components/UserPanel'
 import PanelMenu from '@/components/PanelMenu'
+import PanelRoomList from '@/components/PanelRoomList'
+import PanelCreateRoom from '@/components/PanelCreateRoom'
+import PanelEditRoom from '@/components/PanelEditRoom'
+import PanelChangeInfo from '@/components/PanelChangeInfo'
+import PanelChangePassword from '@/components/PanelChangePassword'
+import Panel2FA from '@/components/Panel2FA'
 
 Vue.use(VueRouter)
 
@@ -49,12 +55,38 @@ const routes = [
     component: TagItems
   },
   {
-    path: '/panel/:pos',
+    path: '/panel',
     name: 'UserPanel',
     components: {
       default: UserPanel,
       listTagItems: PanelMenu
-    }
+    },
+    children: [
+      {
+        path: 'rooms',
+        component: PanelRoomList
+      },
+      {
+        path: 'createRoom',
+        component: PanelCreateRoom
+      },
+      {
+        path: 'editRoom',
+        component: PanelEditRoom
+      },
+      {
+        path: 'changeInfo',
+        component: PanelChangeInfo
+      },
+      {
+        path: 'changePassword',
+        component: PanelChangePassword
+      },
+      {
+        path: '2FA',
+        component: Panel2FA
+      }
+    ]
   }
 ]
 //component: () => import(/* webpackChunkName: "about" */ '../views/About.vue')

@@ -21,7 +21,7 @@
     :timeout=1145141919
     v-model="info_snackbar"
     >
-      登录成功
+      操作成功
       <v-btn
         color="pink"
         text
@@ -46,6 +46,7 @@
           label="Username"
           required
           color="white"
+          @click="block_button_for_attention=false;"
           v-if="action=='register'"
         ></v-text-field>
 
@@ -55,6 +56,7 @@
           label="E-mail (for gravatar)"
           required
           color="white"
+          @click="block_button_for_attention=false;"
           v-if="action=='register'"
         ></v-text-field>
 
@@ -65,24 +67,24 @@
           type="password"
           required
           color="white"
+          @click="block_button_for_attention=false;"
           v-if="action=='register'"
         ></v-text-field>
 
-        <v-checkbox
+        <!-- <v-checkbox
           v-model="checkbox"
           :rules="[v => !!v || 'You must agree to continue!']"
           label="No password reset system! Do you agree?"
           required
           color="white"
           v-if="action=='register'"
-        ></v-checkbox>
+        ></v-checkbox> -->
 
-        <v-row>
+        <v-row class="pb-6" v-if="action=='register'">
           <v-col>
             <v-btn
               color="white"
               @click="action='login';"
-              v-if="action=='register'"
               icon
             >
               <v-icon>mdi-account</v-icon>
@@ -91,10 +93,9 @@
           <v-spacer></v-spacer>
           <v-col class="text-end">
             <v-btn
-              :disabled="!valid || !email || !name || !password"
+              :disabled="!valid || !email || !name || !password || loading || block_button_for_attention"
               color="success"
               @click="register"
-              v-if="action=='register'"
             >
               register
             </v-btn>
@@ -121,12 +122,11 @@
           @click="block_button_for_attention=false;"
           :error="block_button_for_attention && !info_snackbar"
         ></v-text-field>
-        <v-row class="pb-6">
+        <v-row class="pb-6" v-if="action=='login'">
           <v-col>
             <v-btn
               color="white"
               @click="action='register'; resetValidation()"
-              v-if="action=='login'"
               icon
             >
               <v-icon>mdi-account-plus</v-icon>
@@ -138,8 +138,7 @@
               :loading="loading"
               :disabled="!password || !credentials || loading || block_button_for_attention"
               color="success"
-              @click="getToken(credentials,password)"
-              v-if="action=='login'"
+              @click="getToken()"
             >
               login
             </v-btn>
@@ -177,7 +176,7 @@ export default {
     ],
     checkbox: false,
     action: 'login',
-    credential: null,
+    credentials: null,
     error_msg: '',
     ok: false,
     loading: false,
@@ -196,13 +195,37 @@ export default {
       this.$refs.form.resetValidation()
       this.valid=false;
     },
-    getToken(credentials,password){
+    register(){
+      this.loading=true;
+      var data={"email":this.email,"name":this.name,"pass":this.password};
+      axios
+      .post(this.$root.backend+'/api/auth/register',data)
+      .then(response => {
+        if(response.data.status!=0){
+          this.error_msg='注册失败，'+global_.get_err_msg(response.data.action,response.data.status);
+          this.error_snackbar=true;
+        }else{
+          this.ok=true;
+          this.info_snackbar=true;
+        }
+        this.block_button_for_attention=true;
+      })
+      .catch(error => {
+          console.log(error);
+          this.errored = true;
+      })
+      .finally(() => {
+        this.loading = false;
+        setTimeout(() => this.routeTo('/panel/rooms'), 1000)
+      });
+    },
+    getToken(){
       this.loading=true;
       var data;
-      if(credentials.indexOf('@')!=-1)
-        data={"email":credentials,"pass":password}
+      if(this.credentials.indexOf('@')!=-1)
+        data={"email":this.credentials,"pass":this.password};
       else
-        data={"name":credentials,"pass":password}
+        data={"name":this.credentials,"pass":this.password};
       axios
       .post(this.$root.backend+'/api/auth/getToken',data)
       .then(response => {

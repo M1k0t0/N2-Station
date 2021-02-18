@@ -12,7 +12,11 @@ RETURN_CODE=-1
 
 def connect_server(addr):
     try:
-        cli = pymongo.MongoClient("mongodb://localhost:27017/")
+        config=utils.read_json_file("config.json")
+        cli = pymongo.MongoClient(config["db_address"])
+        if config['db_user'] and config['db_pass']:
+            db=cli.admin
+            db.authenticate(config['db_user'],config['db_pass'])
     except BaseException as e:
         print(e)
         sys.exit("Cannot connect to dbserver")

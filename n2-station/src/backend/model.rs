@@ -67,7 +67,7 @@ pub mod response {
 
     use crate::RBATIS;
 
-    #[crud_enable(table_name:rooms)]
+    #[crud_enable(table_name:"rooms"|id_name:"stream_id")]
     pub struct RawRoom {
         owner_uuid: String,
         stream_id: String,
@@ -89,7 +89,7 @@ pub mod response {
         stream_token: Option<Uuid>,
     }
 
-    #[crud_enable(table_name:users)]
+    #[crud_enable(table_name:"users"|id_name:"uuid")]
     pub struct RawUser {
         pub(super) uuid: String,
         username: String,
@@ -228,7 +228,7 @@ pub mod handler {
     use uuid::Uuid;
 
     pub async fn get_all_rooms() -> Result<Vec<BakedRoom>> {
-        Ok(stream::iter(RBATIS.list::<RawRoom>("").await?)
+        Ok(stream::iter(RBATIS.fetch_list::<RawRoom>("").await?)
             .then(|raw| async move { raw.bake(false).await.unwrap() })
             .collect()
             .await)
@@ -236,12 +236,14 @@ pub mod handler {
 
     pub async fn search_rooms_by_owner(owner: &str) -> Result<Vec<BakedRoom>> {
         let wrapper = RBATIS.new_wrapper().eq("owner_uuid", owner);
-        Ok(
-            stream::iter(RBATIS.list_by_wrapper::<RawRoom>("", &wrapper).await?)
-                .then(|raw| async move { raw.bake(false).await.unwrap() })
-                .collect()
-                .await,
+        Ok(stream::iter(
+            RBATIS
+                .fetch_list_by_wrapper::<RawRoom>("", &wrapper)
+                .await?,
         )
+        .then(|raw| async move { raw.bake(false).await.unwrap() })
+        .collect()
+        .await)
     }
 
     pub async fn raw_room_by_stream_name(stream_name: &str) -> Result<Option<RawRoom>> {
@@ -285,7 +287,12 @@ pub mod handler {
     }
 
     pub async fn get_all_users() -> Result<Vec<BakedUser>> {
-        Ok(RBATIS.list("").await?.iter().map(RawUser::bake).collect())
+        Ok(RBATIS
+            .fetch_list("")
+            .await?
+            .iter()
+            .map(RawUser::bake)
+            .collect())
     }
 
     pub async fn search_user_by_uuid(uuid: Uuid) -> Result<Option<BakedUser>> {

@@ -1,5 +1,34 @@
 <template>
     <v-container fill-height class="pa-12">
+        <v-dialog
+        v-if="overlayRoom"
+        v-model="overlayRoom"
+        max-width="600"
+        >
+        <v-card>
+            <v-card-title class="headline">
+            直播相关信息
+            </v-card-title>
+
+            <v-card-text>
+                <p class="title mb-0">推流码率务必设定为&lt;=2100Kbps</p>
+                推流地址：rtmp://live.4g.cx/rtmp<br />
+                流密钥：{{ overlayRoom }}?user={{ getRoomOwner(overlayRoom).name }}&amp;pass=你的密码
+            </v-card-text>
+
+            <v-card-actions>
+            <v-spacer></v-spacer>
+
+            <v-btn
+                color="green darken-1"
+                text
+                @click="overlayRoom = null"
+            >
+                懂了，这就去和obs对线
+            </v-btn>
+            </v-card-actions>
+        </v-card>
+        </v-dialog>
         <!-- <v-row justify="start" align="center" class="ma-0"> -->
         <transition-group name="flip-list" tag="div" class="row ma-0 align-center justify-start">
         <v-col 
@@ -7,24 +36,28 @@
         v-for="room of sortedRoomList"
         :key="room.id"
         >
-        <v-card class="pa-6" height="350px">
-            <v-card-text class="pb-0">
-            <div>
-                {{ room.id }}
+        <v-card class="pa-6 d-flex flex-column" height="350px">
+            <v-card-text class="pb-0" style="max-height: 30%;">
+            <div class="d-flex">
+                <p class="mb-0 mr-auto pt-1">
+                    {{ room.id }}
+                </p>
+                <v-btn icon x-small><v-icon>mdi-close</v-icon></v-btn>
             </div>
-            <p class="display-1 text--primary">
+            <p class="display-1 text--primary" v-line-clamp:20="1">
                 {{ room.title }}
             </p>
             </v-card-text>
-            <div class="ml-4">
+            <div class="ml-4" v-line-clamp:20="2">
                 <v-chip
-                v-for="(tag,ind) in room.tag" 
+                v-for="(tag,ind) in room.tag"
+                class="mr-1 mb-1"
                 :key="ind" 
                 :color="randColor(room.id, ind)">
                     {{ tag }}
                 </v-chip>
             </div>
-            <v-card-text>
+            <v-card-text v-line-clamp:20="3">
                 描述：{{ room.desc }}
                 <br />
                 状态：
@@ -32,18 +65,17 @@
                 <span v-if="room.status=='close'"><b>关闭🚬</b></span>
             </v-card-text>
 
-            <v-card-actions>
+            <v-card-actions class="d-flex mt-auto align-self-start" style="width: 100%">
             <v-btn
-                class="mt-12"
-                color="green lighten-2"
+                color="green lighten-2 mr-auto"
                 @click="toggleLiveStatus(room.id)"
                 :disabled="OpenedRoom!='' && OpenedRoom!=room.id"
                 :loading="loading && processingRoom==room.id"
             >
-                Toggle Status
+                Toggle
             </v-btn>
             <v-btn
-                class="mt-12 ml-4 pr-4"
+                class="text-center"
                 color="warning"
                 @click="editRoomInfo(room.id)"
             >
@@ -71,7 +103,8 @@ export default {
         colorSetting: {},
         OpenedRoom: '',
         loading: false,
-        processingRoom: ''
+        processingRoom: '',
+        overlayRoom: null
     }),
     methods: {
         requestUserRoomList(){
@@ -133,12 +166,17 @@ export default {
             this.loading=true;
             if(this.$root.userRoomList.data[id].status=='open')
                 this.global_.request.closeRoom(this,id);
-            else if(this.$root.userRoomList.data[id].status=='close')
+            else if(this.$root.userRoomList.data[id].status=='close'){
+                this.overlayRoom=id;
                 this.global_.request.openRoom(this,id);
+            }
             setTimeout(() => {
                 this.requestUserRoomList();
                 this.processingRoom='';
-            }, 1000); // it's stupid
+            }, 1500); // it's stupid
+        },
+        getRoomOwner(id){
+            return this.$root.roomList[id].user;
         }
     },
     created(){
@@ -146,6 +184,7 @@ export default {
     },
     mounted() {
         this.requestUserRoomList();
+        // this.$set(this.$root,'userRoomList',{"action":"getUserRoomList","data":{"Test":{"_id":"Test","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f4","image":"default","status":"close","tag":["\u6d4b\u8bd5","Tag\u6d4b\u8bd5","\ud83d\ude00","wwwwwwwww","abababababababab"],"time":{"createTime":1612151938,"openTime":1613658131,"stopTime":1613664149},"title":"\u54fc \u54fc \u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a"},"Test2":{"_id":"Test2","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f42","image":"default","status":"close","tag":["Tag\u6d4b\u8bd52","Tag\u6d4b\u8bd5"],"time":{"createTime":1612287215,"openTime":1613721175,"stopTime":1613721186},"title":"\u6d4b\u8bd5\u623f\u95f42"}},"status":0});
         // this.updateUserRoomList(); // DEBUG
     },
     computed: {

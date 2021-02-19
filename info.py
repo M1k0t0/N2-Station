@@ -93,10 +93,12 @@ def getTagList():
     tagList={ 'open':[], 'close':[] }
     for i in rooms.find({"status":"open"}):
         for j in i['tag']:
+            if j in tagList['open'] or j in tagList['close']:
+                continue
             tagList['open'].append(j)
     for i in rooms.find({"status":"close"}):
         for j in i['tag']:
-            if j in tagList['open']:
+            if j in tagList['open'] or j in tagList['close']:
                 continue
             tagList['close'].append(j)
     return jsonify({ "data": tagList, "action": "getTagList", "status": 0 })

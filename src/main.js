@@ -2,12 +2,16 @@ import Vue from 'vue'
 import App from './App.vue'
 import vuetify from './plugins/vuetify';
 import Gravatar from 'vue-gravatar';
+import lineClamp from 'vue-line-clamp'
 import router from './router'
 import global_ from './components/Global';
 
 Vue.config.productionTip = false;
 Vue.prototype.global_ = global_;
 Vue.component('v-gravatar', Gravatar);
+Vue.use(lineClamp, {
+  importCss: true
+})
 
 new Vue({
   vuetify,

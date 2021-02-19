@@ -36,14 +36,17 @@
                 ><v-icon>fa-hashtag</v-icon></v-avatar>
 
                 <v-divider class="ml-6 mr-3 my-5"></v-divider>
-                
-                <div 
-                v-for="item in sortedRoomList"
-                :key="item.title"
-                class="text-center ml-6 mr-3">
+
+                <transition-group 
+                name="flip-list" 
+                tag="div"
+                >
                     <v-badge 
                     bordered
                     overlap
+                    v-for="item in sortedRoomList"
+                    :key="item.title"
+                    class="text-center ml-6 mr-3"
                     :color="item.status=='open'?'red':'grey'" 
                     :icon="item.status=='open'?'mdi-broadcast':'mdi-broadcast-off'"
                     >
@@ -59,7 +62,7 @@
                                     v-bind="attrs"
                                     v-on="on"
                                     icon 
-                                    @click="$root.sfmode?routeTo('/live/',item.stream_id):routeTo('/live/',item.id)"
+                                    @click="routeTo('/live/',$root.sfmode?item.stream_id:item.id)"
                                     style="margin-top:1px;">
                                         <!-- <img
                                             src=""
@@ -75,7 +78,7 @@
                             </v-tooltip>
                         </v-avatar>
                     </v-badge>
-                </div>
+                </transition-group>
             </v-col>
             <!-- </v-navigation-drawer> -->
             <v-col cols="9" class="pa-0">
@@ -308,5 +311,8 @@ export default {
 }
 .flip-list-move {
     transition: transform 1s;
+}
+.no-outline {
+    outline: none;
 }
 </style>

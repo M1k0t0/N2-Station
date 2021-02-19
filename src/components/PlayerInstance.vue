@@ -13,7 +13,7 @@
                     >
                         <v-col sm="12" md="8" id="videoFrame" class="col-me">
                             <video
-                            class="pl-sm-12 pr-sm-12 pt-sm-0 pb-sm-0"
+                            class="pl-sm-12 pr-sm-12 pt-sm-0 pb-sm-0 no-outline"
                             width="100%"
                             height="auto"
                             id="videoElement" controls autoplay>

@@ -45,7 +45,7 @@ def getUserRoomList():
     except BaseException as e:
         return jsonify(utils.simple_reply("getUserRoomList",str(e)))
 
-    data={ "data":user.rooms, "action": "getUserRoomList", "status":0 }
+    data={ "data":utils.delete_key(user.rooms,["_id"]), "action": "getUserRoomList", "status":0 }
     #data["data"]["user"]={ "id": user.id, "user": user.name, "email": user.email}
 
     return jsonify(data)

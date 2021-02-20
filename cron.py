@@ -35,8 +35,9 @@ def sync_room_status():
             user.close_room({"id":id})
 
 def threads():
-    sync_room_status()
-    time.sleep(600)
+    while True:
+        sync_room_status()
+        time.sleep(600)
 
 def run():
     t=threading.Thread(target=threads)

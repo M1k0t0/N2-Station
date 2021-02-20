@@ -21,12 +21,14 @@ db=cli["N2-Station"]
 rooms=db['rooms']
 
 def sync_room_status():
-    stat=utils.get_stat()
-    for item in stat['http-flv']['servers'][0]['applications'][0]['live']['streams']:
-        id=item['name']
-        status=item['publishing']
-        if not status:
-            room=rooms.find_one({"_id":id})
+    data=utils.get_stat()
+    stat={}
+    for item in data['http-flv']['servers'][0]['applications'][0]['live']['streams']:
+        stat[item["name"]]=item
+    roomList=rooms.find()
+    for room in roomList:
+        id=room['_id']
+        if room['status']=='open' and (id not in stat or not stat[id]["publishing"]):
             if int(time.time()) - room["time"]["openTime"]<=300:
                 continue
             user=User(db,{"id":room["userID"]})

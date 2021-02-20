@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "3.3.2"
+actix-web = { version = "3", features = ["openssl"] }
 rbatis = { version = "1.8.71", default-features = false, features = ["actix-mysql"] }
 argh = "0.1.4"
 anyhow = "1.0.38"
@@ -27,4 +27,8 @@ env_logger = "0.8.3"
 fancy-regex = "0.5.0"
 lazy_static = "1.4.0"
 rand = "0.8.3"
+openssl = { version = "0.10", features = ["v110"] }
 # cookie = "0.14"
+
+[profile.release]
+lto = true

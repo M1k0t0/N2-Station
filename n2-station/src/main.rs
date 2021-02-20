@@ -13,6 +13,7 @@ use log::LevelFilter;
 mod backend;
 
 use backend::RBATIS;
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 
 #[derive(FromArgs)]
 #[argh(description = "N2Station Backend Startup Parameter")]
@@ -26,6 +27,12 @@ struct Param {
 }
 
 #[derive(serde::Deserialize, Clone)]
+struct SslSettings {
+    private_key: String,
+    certificate_chain: String,
+}
+
+#[derive(serde::Deserialize, Clone)]
 struct ServerConfig {
     bind_address: String,
     server_port: u16,
@@ -34,7 +41,8 @@ struct ServerConfig {
     room_open_limit: u64,
     authorization_force_https: bool,
     allow_origin: String,
-    allow_credential: bool,
+    allow_credentials: bool,
+    https: Option<SslSettings>,
 }
 
 #[actix_web::main]
@@ -61,38 +69,78 @@ async fn main() -> Result<()> {
     let address = config.bind_address.clone();
 
     let danmaku = backend::ChatServer::new().start();
-
-    HttpServer::new(move || {
-        App::new()
-            .wrap_fn(|req, srv| {
-                let cfg = req.app_data::<web::Data<ServerConfig>>().unwrap().clone();
-                let fut = srv.call(req);
-                async move {
-                    let mut res = fut.await?;
-                    res.headers_mut().insert(
-                        ACCESS_CONTROL_ALLOW_ORIGIN,
-                        HeaderValue::from_str(&cfg.allow_origin.clone()).unwrap(),
-                    );
-                    res.headers_mut().insert(
-                        ACCESS_CONTROL_ALLOW_CREDENTIALS,
-                        HeaderValue::from_str(&cfg.allow_credential.to_string()).unwrap(),
-                    );
-                    Ok(res)
-                }
-            })
-            .wrap(Logger::default())
-            .wrap(IdentityService::new(
-                CookieIdentityPolicy::new(&[0; 32])
-                    .name("Authorization")
-                    .secure(config.authorization_force_https),
-            ))
-            .data(config.clone())
-            .data(danmaku.clone())
-            .configure(backend::init)
-    })
-    .bind((address, port))?
-    .run()
-    .await?;
+    if let Some(ref ssl_setting) = config.https {
+        let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+        builder
+            .set_private_key_file(ssl_setting.private_key.clone(), SslFiletype::PEM)
+            .unwrap();
+        builder
+            .set_certificate_chain_file(ssl_setting.certificate_chain.clone())
+            .unwrap();
+        HttpServer::new(move || {
+            App::new()
+                .wrap_fn(|req, srv| {
+                    let cfg = req.app_data::<web::Data<ServerConfig>>().unwrap().clone();
+                    let fut = srv.call(req);
+                    async move {
+                        let mut res = fut.await?;
+                        res.headers_mut().insert(
+                            ACCESS_CONTROL_ALLOW_ORIGIN,
+                            HeaderValue::from_str(&cfg.allow_origin.clone()).unwrap(),
+                        );
+                        res.headers_mut().insert(
+                            ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                            HeaderValue::from_str(&cfg.allow_credentials.to_string()).unwrap(),
+                        );
+                        Ok(res)
+                    }
+                })
+                .wrap(Logger::default())
+                .wrap(IdentityService::new(
+                    CookieIdentityPolicy::new(&[0; 32])
+                        .name("Authorization")
+                        .secure(config.authorization_force_https),
+                ))
+                .data(config.clone())
+                .data(danmaku.clone())
+                .configure(backend::init)
+        })
+        .bind_openssl((address, port), builder)?
+        .run()
+        .await?;
+    } else {
+        HttpServer::new(move || {
+            App::new()
+                .wrap_fn(|req, srv| {
+                    let cfg = req.app_data::<web::Data<ServerConfig>>().unwrap().clone();
+                    let fut = srv.call(req);
+                    async move {
+                        let mut res = fut.await?;
+                        res.headers_mut().insert(
+                            ACCESS_CONTROL_ALLOW_ORIGIN,
+                            HeaderValue::from_str(&cfg.allow_origin.clone()).unwrap(),
+                        );
+                        res.headers_mut().insert(
+                            ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                            HeaderValue::from_str(&cfg.allow_credentials.to_string()).unwrap(),
+                        );
+                        Ok(res)
+                    }
+                })
+                .wrap(Logger::default())
+                .wrap(IdentityService::new(
+                    CookieIdentityPolicy::new(&[0; 32])
+                        .name("Authorization")
+                        .secure(config.authorization_force_https),
+                ))
+                .data(config.clone())
+                .data(danmaku.clone())
+                .configure(backend::init)
+        })
+        .bind((address, port))?
+        .run()
+        .await?;
+    }
 
     Ok(())
 }

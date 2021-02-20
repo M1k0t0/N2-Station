@@ -73,11 +73,15 @@ def register():
         content=json.loads(request.get_data())
     except:
         return jsonify(utils.simple_reply("register", -11))
-    if "name" not in content or "email" not in content or "pass" not in content:
+    if "name" not in content or "email" not in content or "pass" not in content or "code" not in content:
         return jsonify(utils.simple_reply("register", -10))
+    validCode=db["invite_code"].find_one({'code':content["code"]})
+    if validCode==None:
+        return jsonify(utils.simple_reply("register", -4))
+
     try:
         data, code=process.add_user_to_db(db,{
-            "email": content["email"], 
+            "email": content["email"].lower(), 
             "name": content["name"], 
             "password": content["pass"], 
             "rooms": {}, 
@@ -96,6 +100,7 @@ def register():
         return jsonify({ "action": "register", "status": 0, "id": data })
     response=jsonify({ "action": "register", "status": 0, "id": data })
     response.set_cookie('Authorization',user.generate_token(),expires=utils.get_date_after(90))
+    db["invite_code"].delete_one({'code':content["code"]})
     return response
 
 @auth.route('/api/auth/getToken', methods=["POST"])

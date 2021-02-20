@@ -47,12 +47,13 @@ def add_user_to_db(db, data):
     
     if db["users"].find_one({"email":data["email"]}) != None:
         return (-1, RETURN_CODE)
-    if db["users"].find_one({"name":data["name"]}) != None:
+    if db["users"].find_one({"name":data["name"]}) != None or db["users"].find_one({"name_lower":data["name"].lower()}) != None:
         return (-2, RETURN_CODE)
     
     #if 密码强度不合格:   WIP
         #return -3
 
+    data["name_lower"]=data["name"].lower();
     data["password"]=utils.get_hashed_password(data["password"])
     
     db["users"].insert_one(data)

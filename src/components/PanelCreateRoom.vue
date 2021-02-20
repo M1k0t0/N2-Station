@@ -269,6 +269,9 @@ export default {
                 path: base+data,
             })
         }
+    },
+    created(){
+        this.$root.panelMenuIndex=1;
     }
 }
 </script>

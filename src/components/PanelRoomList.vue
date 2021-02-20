@@ -36,7 +36,7 @@
         v-for="room of sortedRoomList"
         :key="room.id"
         >
-        <v-card class="pa-6 d-flex flex-column" height="350px">
+        <v-card class="pa-6 d-flex flex-column" height="350px" style="border-radius:16px;">
             <v-overlay
             absolute
             opacity=0.8
@@ -114,6 +114,7 @@
                 @click="toggleLiveStatus(room.id)"
                 :disabled="OpenedRoom!='' && OpenedRoom!=room.id"
                 :loading="loading && processingRoom==room.id"
+                style="border-radius:7px;"
             >
                 Toggle
             </v-btn>
@@ -121,12 +122,31 @@
                 class="text-center"
                 color="warning"
                 @click="editRoomInfo(room.id)"
+                style="border-radius:7px;"
             >
                 Edit
             </v-btn>
             </v-card-actions>
         </v-card>
 
+        </v-col>
+        <v-col 
+        xs="3" md="4" sm="6"
+        key="createRoom"
+        v-if="renderButton"
+        >
+        <v-card class="pa-0 d-flex flex-column" height="350px" style="border-radius:16px;">
+            <v-btn
+            tile
+            color="grey darken-4"
+            width="100%"
+            height="100%"
+            style="opacity:0.7;border-radius:16px;"
+            @click="routeTo('/panel','/createRoom')"
+            >
+            <v-icon x-large style="font-size:55px;">mdi-plus-circle-outline</v-icon>
+            </v-btn>
+        </v-card>
         </v-col>
         </transition-group>
         <!-- </v-row> -->
@@ -149,7 +169,8 @@ export default {
         processingRoom: '',
         overlayRoom: null,
         confirmOverlayRoom: '',
-        confirmDialog: true
+        confirmDialog: true,
+        renderButton: false
     }),
     methods: {
         requestUserRoomList(){
@@ -241,9 +262,10 @@ export default {
         this.$root.panelMenuIndex=0;
     },
     mounted() {
-        this.requestUserRoomList();
-        // this.$set(this.$root,'userRoomList',{"action":"getUserRoomList","data":{"Test":{"_id":"Test","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f4","image":"default","status":"close","tag":["\u6d4b\u8bd5","Tag\u6d4b\u8bd5","\ud83d\ude00","wwwwwwwww","abababababababab"],"time":{"createTime":1612151938,"openTime":1613658131,"stopTime":1613664149},"title":"\u54fc \u54fc \u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a"},"Test2":{"_id":"Test2","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f42","image":"default","status":"close","tag":["Tag\u6d4b\u8bd52","Tag\u6d4b\u8bd5"],"time":{"createTime":1612287215,"openTime":1613721175,"stopTime":1613721186},"title":"\u6d4b\u8bd5\u623f\u95f42"}},"status":0});
-        // this.updateUserRoomList(); // DEBUG
+        // this.requestUserRoomList();
+        this.$set(this.$root,'userRoomList',{"action":"getUserRoomList","data":{"Test":{"_id":"Test","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f4","image":"default","status":"close","tag":["\u6d4b\u8bd5","Tag\u6d4b\u8bd5","\ud83d\ude00","wwwwwwwww","abababababababab"],"time":{"createTime":1612151938,"openTime":1613658131,"stopTime":1613664149},"title":"\u54fc \u54fc \u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a"},"Test2":{"_id":"Test2","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f42","image":"default","status":"close","tag":["Tag\u6d4b\u8bd52","Tag\u6d4b\u8bd5"],"time":{"createTime":1612287215,"openTime":1613721175,"stopTime":1613721186},"title":"\u6d4b\u8bd5\u623f\u95f42"}},"status":0});
+        this.updateUserRoomList(); // DEBUG
+        this.$nextTick(() => this.renderButton=true);
     },
     computed: {
         sortedRoomList() {

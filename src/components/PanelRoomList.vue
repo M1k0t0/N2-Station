@@ -37,12 +37,55 @@
         :key="room.id"
         >
         <v-card class="pa-6 d-flex flex-column" height="350px">
+            <v-overlay
+            absolute
+            opacity=0.8
+            :value="confirmOverlayRoom==room.id"
+            >
+            <v-progress-circular
+                indeterminate
+                size="64"
+                v-if="!confirmDialog"
+            ></v-progress-circular>
+            <v-card elevation=4 v-if="confirmDialog">            
+            <v-card-title class="headline grey lighten-2" style="background-color:#72767d!important;">
+                是否要删除该房间？
+            </v-card-title>
+            <v-card-text class="mt-3">
+                {{room.id}} 将会永久失去！（真的很久！）
+            </v-card-text>
+            <v-card-actions>
+                <v-btn
+                    color="error"
+                    @click="deleteRoom(room.id)"
+                >
+                    确认
+                </v-btn>
+                <v-spacer></v-spacer>
+                <v-btn
+                    color="warning"
+                    @click="confirmOverlayRoom=''"
+                >
+                    取消
+                </v-btn>
+            </v-card-actions>
+            </v-card>
+            </v-overlay>
             <v-card-text class="pb-0" style="max-height: 30%;">
             <div class="d-flex">
                 <p class="mb-0 mr-auto pt-1">
                     {{ room.id }}
                 </p>
-                <v-btn icon x-small><v-icon>mdi-close</v-icon></v-btn>
+                <v-btn 
+                    icon 
+                    x-small 
+                    color="grey" 
+                    class="mr-n2" 
+                    @click="confirmOverlayRoom=room.id;"
+                    :disable="!confirmDialog"
+                >
+                    <v-icon>mdi-close</v-icon>
+                </v-btn>
             </div>
             <p class="display-1 text--primary" v-line-clamp:20="1">
                 {{ room.title }}
@@ -104,7 +147,9 @@ export default {
         OpenedRoom: '',
         loading: false,
         processingRoom: '',
-        overlayRoom: null
+        overlayRoom: null,
+        confirmOverlayRoom: '',
+        confirmDialog: true
     }),
     methods: {
         requestUserRoomList(){
@@ -120,6 +165,8 @@ export default {
             .finally(() => {
                 this.updateUserRoomList();
                 this.loading=false;
+                this.confirmOverlayRoom='';
+                this.confirmDialog=true;
             })
         },
         updateUserRoomList(){
@@ -181,6 +228,13 @@ export default {
         },
         getRoomOwner(id){
             return this.$root.roomList[id].user;
+        },
+        deleteRoom(id){
+            this.confirmDialog=false;
+            this.global_.request.deleteRoom(this,id)
+            .then(() => {
+                this.requestUserRoomList();
+            });
         }
     },
     created(){

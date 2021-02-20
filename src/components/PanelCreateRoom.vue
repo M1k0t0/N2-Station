@@ -263,6 +263,11 @@ export default {
                 this.sb=true;
                 setTimeout(() => this.routeTo('/panel/rooms'), 1000);
             }
+        },
+        routeTo(base, data=''){
+            this.$router.push({
+                path: base+data,
+            })
         }
     }
 }

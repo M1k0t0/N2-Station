@@ -33,6 +33,7 @@ new Vue({
     userRoomList: {},
     openRoom: {},
     closeRoom: {},
+    deleteRoom: {},
     panelMenuIndex: 0
   })
 }).$mount('#app')

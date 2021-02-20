@@ -12,7 +12,7 @@
 
             <v-card-text>
                 <p class="title mb-0">推流码率务必设定为&lt;=2100Kbps</p>
-                推流地址：rtmp://live.4g.cx/rtmp<br />
+                推流地址：rtmp://publish.n2station.live/rtmp<br />
                 流密钥：{{ overlayRoom }}?user={{ getRoomOwner(overlayRoom).name }}&amp;pass=你的密码
             </v-card-text>
 
@@ -165,15 +165,19 @@ export default {
             this.processingRoom=id;
             this.loading=true;
             if(this.$root.userRoomList.data[id].status=='open')
-                this.global_.request.closeRoom(this,id);
+                this.global_.request.closeRoom(this,id)
+                .then(() => {
+                    this.requestUserRoomList();
+                    this.processingRoom='';
+                });
             else if(this.$root.userRoomList.data[id].status=='close'){
                 this.overlayRoom=id;
-                this.global_.request.openRoom(this,id);
+                this.global_.request.openRoom(this,id)
+                .then(() => {
+                    this.requestUserRoomList();
+                    this.processingRoom='';
+                });
             }
-            setTimeout(() => {
-                this.requestUserRoomList();
-                this.processingRoom='';
-            }, 1500); // it's stupid
         },
         getRoomOwner(id){
             return this.$root.roomList[id].user;

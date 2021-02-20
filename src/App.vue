@@ -315,4 +315,12 @@ export default {
 .no-outline {
     outline: none;
 }
+::-webkit-scrollbar {
+  display: none; /* Chrome Safari */
+}
+.element {
+    scrollbar-width: none; /* Firefox */ 
+    overflow: -moz-scrollbars-none;
+    -ms-overflow-style: none; /* IE 10+ */
+}
 </style>

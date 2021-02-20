@@ -71,6 +71,16 @@
           v-if="action=='register'"
         ></v-text-field>
 
+        <v-text-field
+          v-model="code"
+          label="Invite Code"
+          :rules="[v => !!v || 'Invite Code is required']"
+          required
+          color="white"
+          @click="block_button_for_attention=false;"
+          v-if="action=='register'"
+        ></v-text-field>
+
         <!-- <v-checkbox
           v-model="checkbox"
           :rules="[v => !!v || 'You must agree to continue!']"
@@ -94,6 +104,7 @@
           <v-col class="text-end">
             <v-btn
               :disabled="!valid || !email || !name || !password || loading || block_button_for_attention"
+              :loading="loading"
               color="success"
               @click="register"
             >
@@ -182,7 +193,8 @@ export default {
     loading: false,
     error_snackbar: false,
     info_snackbar: false,
-    block_button_for_attention: false
+    block_button_for_attention: false,
+    code:''
   }),
   methods: {
     validate () {
@@ -197,12 +209,12 @@ export default {
     },
     register(){
       this.loading=true;
-      var data={"email":this.email,"name":this.name,"pass":this.password};
+      var data={"email":this.email,"name":this.name,"pass":this.password,"code":this.code};
       axios
       .post(this.$root.backend+'/api/auth/register',data)
       .then(response => {
         if(response.data.status!=0){
-          this.error_msg='注册失败，'+global_.get_err_msg(response.data.action,response.data.status);
+          this.error_msg=global_.get_err_msg(response.data.action,response.data.status);
           this.error_snackbar=true;
         }else{
           this.ok=true;
@@ -216,7 +228,8 @@ export default {
       })
       .finally(() => {
         this.loading = false;
-        setTimeout(() => this.routeTo('/panel/rooms'), 1000)
+        if(this.info_snackbar)
+          setTimeout(() => this.routeTo('/panel/rooms'), 1000)
       });
     },
     getToken(){
@@ -244,7 +257,8 @@ export default {
       })
       .finally(() => {
         this.loading = false;
-        setTimeout(() => this.routeTo('/panel/rooms'), 1000)
+        if(this.info_snackbar)
+          setTimeout(() => this.routeTo('/panel/rooms'), 1000)
       });
     },
     routeTo(base, data=''){

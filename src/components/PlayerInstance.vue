@@ -55,7 +55,7 @@ export default {
     }),
     methods: {
         setSource(id){
-            this.player.source = 'http://live.4g.cx/live?port=1935&app=rtmp&stream='+id;
+            this.player.source = 'https://live.4g.cx/live?port=1935&app=rtmp&stream='+id;
             this.$nextTick(() => this.pullVideo());
 
         },

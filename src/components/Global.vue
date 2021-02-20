@@ -2,17 +2,18 @@
 import axios from 'axios';
 axios.defaults.withCredentials = true;
 
-const BackendAddress="http://live.4g.cx/backend";  // http unsafe
-const debugBackendAddress="http://live.4g.cx:8443"
+const BackendAddress="https://live.4g.cx/backend";  // http unsafe
+const debugBackendAddress="https://n2station.live:8443"
 const SFMode=false;
 const ERR_MSG={
     'getToken': {
         '-1': '账号或密码错误'
     },
     'register': {
-        '-1': '邮箱已存在',
-        '-2': '用户名已存在',
-        '-3': '密码强度不足 (你不应该看到这个哦)'
+        '-1': '注册失败，邮箱已存在',
+        '-2': '注册失败，用户名已存在',
+        '-3': '注册失败，密码强度不足 (你不应该看到这个哦)',
+        '-4': '注册失败，邀请码错误'
     },
     'openRoom': {
         '-1': '房间不存在',
@@ -21,13 +22,20 @@ const ERR_MSG={
     'closeRoom': {
         '-1': '房间不存在'
     },
+    'createRoom': {
+        '-1': '相同房间已存在',
+        '-2': '已达房间数量上限'
+    },
+    'deleteRoom': {
+        '-1': '房间不存在'
+    },
     'global': {
-        '-10': '答应人家，不要乱动人家的js，好吗？',
+        '-10': 'Token已失效或参数错误',
         '-11': 'ん? 发生了未知错误！'
     }
 }
 const get_err_msg=function(action, err_code){
-    err_code+=''
+    err_code+='';
     if(ERR_MSG[action]!=undefined && ERR_MSG[action][err_code]!=undefined) return ERR_MSG[action][err_code];
     if(ERR_MSG['global'][err_code]!=undefined) return ERR_MSG['global'][err_code];
 }
@@ -87,8 +95,8 @@ const request={
             return true;
         })
     },
-    openRoom: function(that,id){
-        axios
+    openRoom: async function(that,id){
+        await axios
         .post(that.$root.backend+'/api/user/openRoom',{id})
         .then(response => {
             that.$root.openRoom = response.data; // full data returned
@@ -97,11 +105,21 @@ const request={
             console.log(error);
         })
     },
-    closeRoom: function(that,id){
-        axios
+    closeRoom: async function(that,id){
+        await axios
         .post(that.$root.backend+'/api/user/closeRoom',{id})
         .then(response => {
             that.$root.closeRoom = response.data; // full data returned
+        })
+        .catch(error => {
+            console.log(error);
+        })
+    },
+    deleteRoom: async function(that,id){
+        await axios
+        .post(that.$root.backend+'/api/user/deleteRoom',{id})
+        .then(response => {
+            that.$root.deleteRoom = response.data; // full data returned
         })
         .catch(error => {
             console.log(error);

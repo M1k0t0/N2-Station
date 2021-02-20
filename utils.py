@@ -1,4 +1,4 @@
-import os, uuid, hashlib, time, bcrypt, datetime, time_uuid, json,sys
+import os, uuid, hashlib, time, bcrypt, datetime, time_uuid, json, sys, requests
 
 code2type=["INFO","WARN","ERROR","UNDEFINED"]
 
@@ -46,6 +46,9 @@ def delete_key(data, keyList):
 def read_json_file(name):
     with open(sys.path[0]+'/'+name,'r') as f:
         return json.load(f)
+
+def get_stat():
+    return json.loads(requests.get('https://n2station.live/stat').text) # url should be configurable
 
 if __name__=="__main__":
     os._exit(0)

@@ -1,7 +1,7 @@
 from flask import Flask, Blueprint, jsonify, request
 from flask_cors import CORS
 from interface import User
-import pymongo, os, sys, time, uuid, json, utils, process
+import pymongo, os, sys, time, uuid, json, utils, process, cron
 
 from auth import auth
 from info import info
@@ -27,6 +27,9 @@ def index():
     return 'Welcome to N2Backend '+BACKEND_VERSION
 
 if __name__ == '__main__':
+
+    cron.run()
+
     app.debug = False
     if 'ssl_cert_path' in config and 'ssl_key_path' in config:
         app.run(host="0.0.0.0", port=8443, ssl_context=(config['ssl_cert_path'], config['ssl_key_path']))

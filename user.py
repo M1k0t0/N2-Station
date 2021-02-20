@@ -165,25 +165,25 @@ def closeRoom():
     except:
         return jsonify(utils.simple_reply("closeRoom", -2))
 
-@user.route('/api/user/debug/<func>')
-def debug(func):
+# @user.route('/api/user/debug/<func>')
+# def debug(func):
 
-    return make_response("API Unavailable"), 404
+#     return make_response("API Unavailable"), 404
 
-    try:
-        content=json.loads(request.get_data())
-    except:
-        return jsonify(utils.simple_reply("debug", -11))
+#     try:
+#         content=json.loads(request.get_data())
+#     except:
+#         return jsonify(utils.simple_reply("debug", -11))
 
-    if func=="addUser":
-        try:
-            process.add_user_to_db(db,{})
-        except BaseException as e:
-            return str(e)
-        return "0"
-    if func=="delUser":
-        try:
-            data, code = process.delete_user_from_db(db,content)
-        except BaseException as e:
-            return str(e)
-        return data
+#     if func=="addUser":
+#         try:
+#             process.add_user_to_db(db,{})
+#         except BaseException as e:
+#             return str(e)
+#         return "0"
+#     if func=="delUser":
+#         try:
+#             data, code = process.delete_user_from_db(db,content)
+#         except BaseException as e:
+#             return str(e)
+#         return data

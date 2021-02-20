@@ -189,13 +189,22 @@ def verify():
     }
 
     method, data = utils.get_input(d)
-        
-    if method==None:
+
+    try:
+        user=User(db,{method: data})
+    except BaseException as e:
+        return jsonify(utils.simple_reply("verify",str(e)))
+    
+    password=request.values.get("pass")
+    liveID=request.values.get("name")
+    if password==None or liveID==None:
         return jsonify(utils.simple_reply("verify",-10)), 403
 
-    method=method.replace("id","_id",1)
-    user=users.find_one({method:data})
-    if user != None:
-        if utils.check_password(request.values.get("pass"), user["password"]):
-            return jsonify(utils.simple_reply("verify",0))
-    return jsonify(utils.simple_reply("verify",-1)), 403
+    if user == None or not utils.check_password(password, user.password):
+        return jsonify(utils.simple_reply("verify",-1)), 403
+    if liveID not in user.streaming:
+        if liveID in user.rooms and len(user.streaming)<user.limit["stream_count"]:
+            user.open_room({"id":liveID})
+        else:
+            return jsonify(utils.simple_reply("verify",-1)), 403
+    return jsonify(utils.simple_reply("verify",0))

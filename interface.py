@@ -93,15 +93,35 @@ class User:
         self.streaming.append(data["id"])
         self.sync_data(['rooms','streaming'])
 
-        self.db['rooms'].update_one({"_id":data["id"]},{ "$set": { "status": "open" }})
-    
+        self.db['rooms'].update_one({"_id":data["id"]},{ 
+            "$set": { 
+                "status": "open", 
+                "time": { 
+                    "createTime": self.rooms[data["id"]]["time"]["createTime"],
+                    "openTime": int(time.time()),
+                    "stopTime": self.rooms[data["id"]]["time"]["stopTime"]
+                }
+            }
+        })
+
     def close_room(self, data):
+        if data["id"] not in self.streaming:
+            return
         self.rooms[data["id"]]["status"]="close"
         self.rooms[data["id"]]["time"]["stopTime"]=int(time.time())
         del self.streaming[self.streaming.index(data["id"])]
         self.sync_data(['rooms','streaming'])
 
-        self.db['rooms'].update_one({"_id":data["id"]},{ "$set": { "status": "close" }})
+        self.db['rooms'].update_one({"_id":data["id"]},{ 
+            "$set": { 
+                "status": "close", 
+                "time": { 
+                    "createTime": self.rooms[data["id"]]["time"]["createTime"],
+                    "openTime": self.rooms[data["id"]]["time"]["openTime"],
+                    "stopTime": int(time.time()) 
+                }
+            }
+        })
 
 if __name__=="__main__":
     os._exit(0)

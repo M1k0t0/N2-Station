@@ -208,7 +208,8 @@ export default {
             error: null
         },
         error_snackbar: false,
-        on_search:false
+        on_search:false,
+        timerID: null
     }),
     methods:{
         clearSource(){
@@ -236,6 +237,9 @@ export default {
         if(this.$route.path=='/')
             this.routeTo('/welcome');
         this.global_.request.getRoomList(this);
+        this.timerID=setInterval(() => {
+            this.global_.request.getRoomList(this);
+        }, 600000);
     },
     computed: {
         sortedRoomList() {

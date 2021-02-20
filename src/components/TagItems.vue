@@ -34,7 +34,8 @@
 
 export default {
     data: () => ({
-        tagList: {}
+        tagList: {},
+        timerID: null
     }),
     methods: {
         routeTo(base, data=''){
@@ -45,7 +46,13 @@ export default {
     },
     mounted() {
         this.global_.request.getTagList(this);
-    }
+        this.timerID=setInterval(() => {
+            this.global_.request.getTagList(this);
+        }, 600000);
+    },
+    beforeDestroy(){
+        clearInterval(this.timerID);
+    },
 }
 </script>
 

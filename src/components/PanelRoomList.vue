@@ -262,9 +262,9 @@ export default {
         this.$root.panelMenuIndex=0;
     },
     mounted() {
-        // this.requestUserRoomList();
-        this.$set(this.$root,'userRoomList',{"action":"getUserRoomList","data":{"Test":{"_id":"Test","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f4","image":"default","status":"close","tag":["\u6d4b\u8bd5","Tag\u6d4b\u8bd5","\ud83d\ude00","wwwwwwwww","abababababababab"],"time":{"createTime":1612151938,"openTime":1613658131,"stopTime":1613664149},"title":"\u54fc \u54fc \u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a"},"Test2":{"_id":"Test2","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f42","image":"default","status":"close","tag":["Tag\u6d4b\u8bd52","Tag\u6d4b\u8bd5"],"time":{"createTime":1612287215,"openTime":1613721175,"stopTime":1613721186},"title":"\u6d4b\u8bd5\u623f\u95f42"}},"status":0});
-        this.updateUserRoomList(); // DEBUG
+        this.requestUserRoomList();
+        // this.$set(this.$root,'userRoomList',{"action":"getUserRoomList","data":{"Test":{"_id":"Test","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f4","image":"default","status":"close","tag":["\u6d4b\u8bd5","Tag\u6d4b\u8bd5","\ud83d\ude00","wwwwwwwww","abababababababab"],"time":{"createTime":1612151938,"openTime":1613658131,"stopTime":1613664149},"title":"\u54fc \u54fc \u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a"},"Test2":{"_id":"Test2","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f42","image":"default","status":"close","tag":["Tag\u6d4b\u8bd52","Tag\u6d4b\u8bd5"],"time":{"createTime":1612287215,"openTime":1613721175,"stopTime":1613721186},"title":"\u6d4b\u8bd5\u623f\u95f42"}},"status":0});
+        // this.updateUserRoomList(); // DEBUG
         this.$nextTick(() => this.renderButton=true);
     },
     computed: {

@@ -72,6 +72,16 @@ const request={
             console.log(error);
         });
     },
+    asyncGetRoomList: async function(that){
+        await axios
+        .get(that.$root.backend+'/api/info/room',{withCredentials:true})
+        .then(response => {
+            that.$set(that.$root,'roomList',that.$root.sfmode ? response.data.rooms : response.data.data);
+        })
+        .catch(error => {
+            console.log(error);
+        });
+    },
     getTagList: function(that){
         axios
         .get(that.$root.backend+'/api/info/tag')

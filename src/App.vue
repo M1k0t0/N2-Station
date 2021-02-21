@@ -213,10 +213,8 @@ export default {
     }),
     methods:{
         clearSource(){
-            if(this.$root.flvPlayer){
-                this.$root.flvPlayer.destroy();
-                this.$root.flvPlayer=null;
-            }
+            if(this.$root.flvPlayer) this.$root.flvPlayer.destroy();
+            if(this.$root.DPlayer) this.$root.DPlayer.destroy();
         },
         updateRoomList(){
             this.global_.request.getRoomList(this);
@@ -326,5 +324,16 @@ export default {
     scrollbar-width: none; /* Firefox */ 
     overflow: -moz-scrollbars-none;
     -ms-overflow-style: none; /* IE 10+ */
+}
+.container.fill-height > .row {
+  max-width: initial;
+  width: 100%;
+}
+.container.fill-height {
+  flex-direction: column !important;
+  align-items: initial !important;
+}
+.container.fill-height>.row {
+  flex: 1 1 auto !important;
 }
 </style>

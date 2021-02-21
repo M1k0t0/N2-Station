@@ -6,21 +6,27 @@
             class="fill-height"
         >
             <v-col sm="12" md="11" class="pb-1 fill-height">
-                <v-card tile class="pt-3 pl-3 pr-3 pb-12" height="90%">
+                <v-card tile class="pt-5 pl-3 pr-3 pb-8" height="95%">
+                    <p class="title ml-3 mb-0">{{ room.title }}</p>
+                    <p class="caption ml-3 mb-2">{{ room.desc }}</p>
                     <v-row
                         align="center"
                         justify="center"
                     >
-                        <v-col sm="12" md="8" id="videoFrame" class="col-me">
-                            <video
+                        <v-col sm="12" md="8" class="col-me">
+                            <!-- <video
                             class="pl-sm-12 pr-sm-12 pt-sm-0 pb-sm-0 no-outline"
                             width="100%"
                             height="auto"
                             id="videoElement" controls autoplay>
                                 Your browser is too old which doesn't support HTML5 video.
-                            </video>
-                            <v-gravatar v-if="$root.roomList[$route.params.id]" class=" ml-sm-12 mt-3 mb-3 mt-md-7 mb-md-7" size="60" :email="$root.roomList[$route.params.id].user.email" style="border-radius: 60px;" />
-                            <p v-if="$root.roomList[$route.params.id]" style="font-size: 25px; margin-left: 130px; margin-top: -83px;">{{$root.roomList[$route.params.id].user.name}}</p>
+                            </video> -->
+                            <div 
+                            class="ml-3 pt-sm-0 pb-sm-0 no-outline"
+                            id="videoFrame"
+                            ></div>
+                            <v-gravatar v-if="room" class=" ml-sm-8 mt-1 mb-1 mt-md-5 mb-md-5" :size="60" :email="$root.roomList[$route.params.id].user.email" style="border-radius: 60px;" />
+                            <p v-if="room" style="font-size: 25px; margin-left: 120px; margin-top: -75px;">{{$root.roomList[$route.params.id].user.name}}</p>
                         </v-col>
                         <v-spacer />
                         <v-col sm="12" md="4" class="col-me pb-8">
@@ -48,10 +54,12 @@
 <script>
 
 import flvjs from 'flv.js';
+import DPlayer from 'dplayer';
 
 export default {
     data: () => ({
-        player: {}
+        player: {},
+        room: null
     }),
     methods: {
         setSource(id){
@@ -65,16 +73,30 @@ export default {
         },
         pullVideo(){
             if (this.player.source && flvjs.isSupported()) {
-                var videoElement = document.getElementById('videoElement');
-                this.$root.flvPlayer = flvjs.createPlayer({
-                    type: 'flv',
-                    url: this.player.source,
-                    hasAudio: true,
-                    hasVideo: true,
-                    isLive: true
+                var videoFrame = document.getElementById('videoFrame');
+                var videoSource = this.player.source;
+                var flvPlayer = null;
+                this.$root.DPlayer = new DPlayer({
+                    container: videoFrame,
+                    video: {
+                        url: 'live.flv',
+                        type: 'customFlv',
+                        live: true,
+                        playbackSpeed: [1],
+                        customType: {
+                            customFlv: function (video) {
+                                flvPlayer = flvjs.createPlayer({
+                                    type: 'flv',
+                                    url: videoSource
+                                });
+                                flvPlayer.attachMediaElement(video);
+                                flvPlayer.load();
+                            }
+                        }
+                    }
                 });
-                this.$root.flvPlayer.attachMediaElement(videoElement);
-                this.$root.flvPlayer.load();
+                this.$root.DPlayer.play();
+                this.$root.flvPlayer=flvPlayer;
             }
         },
         setChatboxHeight(id){
@@ -87,21 +109,36 @@ export default {
         }
     },
     mounted() {
-        this.loadRoom(this.$route.params.id);
-        this.$set(this.$root.bread,1,{
-            text: this.$root.roomList[this.$route.params.id].title,
-            disabled: true,
-            href: '#/live/'+this.$route.params.id,
-        });
+        this.room=this.$root.roomList[this.$route.params.id];
+        if(!this.room){
+            this.global_.request.asyncGetRoomList(this).then(() => {
+                this.room=this.$root.roomList[this.$route.params.id];
+                this.loadRoom(this.$route.params.id);
+                this.$set(this.$root.bread,1,{
+                    text: this.room.title,
+                    disabled: true,
+                    href: '#/live/'+this.$route.params.id,
+                });
+            })
+        }else{
+            this.loadRoom(this.$route.params.id);
+            this.$set(this.$root.bread,1,{
+                text: this.room.title,
+                disabled: true,
+                href: '#/live/'+this.$route.params.id,
+            });
+        }
     },
     beforeRouteUpdate (to, from, next) {
         if(this.$root.flvPlayer) this.$root.flvPlayer.destroy();
+        if(this.$root.DPlayer) this.$root.DPlayer.destroy();
         this.id = to.params.id;
+        this.room=this.$root.roomList[this.id];
         this.loadRoom(this.id);
         this.$set(this.$root.bread,1,{
-            text: this.$root.roomList[this.id].title,
+            text: this.room.title,
             disabled: true,
-            href: '#/live/'+this.id,
+            href: '#/live/'+this.$route.params.id,
         });
         next();
     }

@@ -1,40 +1,94 @@
 <template>
-    <v-container fluid class="align-center justify-center fill-height">
-        <v-card tile class="pt-5 pl-3 pr-3 pb-8" height="80%" width="90%">
-            <v-row
-                align="center"
-                justify="center"
-            >
-                <v-col sm="12" md="8" class="col-me">
-                    <div 
-                        class="pt-sm-0 pb-sm-0 no-outline"
-                        id="videoFrame"
-                    ></div>
-                    <v-gravatar v-if="room" class=" ml-sm-8 mt-1 mb-1 mt-md-5 mb-md-5" :size="60" :email="$root.roomList[$route.params.id].user.email" style="border-radius: 60px;" />
-                    <p v-if="room" style="font-size: 25px; margin-left: 120px; margin-top: -75px;">{{$root.roomList[$route.params.id].user.name}}</p>
-                </v-col>
-                <v-spacer />
-                <v-col sm="12" md="4" class="col-me fill-height" min-height="300px" style="flex-grow: 1;">
-                    <v-card class="fill-height">
-                        <v-card outline id="chatContent" height="80%" class="ml-2 mr-2 mt-0 mb-0">
-                        </v-card>
-                        <v-row class="py-5 py-sm-0 mx-auto">
-                        <v-col cols="9" class="pt-0 pr-0">
-                            <v-text-field color="white" label="Commit" class="ml-2 mr-2 pt-0 mt-0"></v-text-field>
+    <v-container fluid fill-height class="align-center justify-center">
+        <v-row
+            align="center"
+            justify="center"
+            class="fill-height"
+        >
+            <v-col sm="12" md="11" class="pb-1 fill-height">
+                <v-card tile class="px-6 pt-3 on-phone-card-padding-bottom on-desktop-card-padding-bottom" height="95%">
+                    <v-row
+                        align="stretch"
+                        justify="center"
+                        style="flex-wrap: wrap;"
+                    >
+                        <v-col sm="12" md="8" class="col-me">
+                            <p class="title mb-0">{{ room.title }}</p>
+                            <p class="caption mb-2">{{ room.desc }}</p>
+                            <!-- <video
+                            class="pl-sm-12 pr-sm-12 pt-sm-0 pb-sm-0 no-outline"
+                            width="100%"
+                            height="auto"
+                            id="videoElement" controls autoplay>
+                                Your browser is too old which doesn't support HTML5 video.
+                            </video> -->
+                            <div 
+                            class="pt-sm-0 pb-sm-0 no-outline"
+                            id="videoFrame"
+                            ></div>
+                            <v-card flat>
+                                <v-row
+                                    align="center"
+                                    justify="start"
+                                >
+                                    <v-col cols="2">
+                                        <v-gravatar 
+                                            v-if="room" 
+                                            class="" 
+                                            :size="55" 
+                                            :email="$root.roomList[$route.params.id].user.email" 
+                                            style="display:inline; border-radius: 60px;" 
+                                        />
+                                    </v-col>
+                                    <v-col cols="5">
+                                        <p 
+                                            v-if="room" 
+                                            style="display:inline;font-size: 25px;"
+                                        >
+                                            {{$root.roomList[$route.params.id].user.name}}
+                                        </p>
+                                    </v-col>
+                                </v-row>
+                            </v-card>
                         </v-col>
-                        <v-spacer/>
-                        <v-col cols="3" class="pt-0 pr-0 pl-4">
-                            <v-btn icon color="white"><v-icon color="white">mdi-arrow-up-thick</v-icon></v-btn>
+                        <v-spacer />
+                        <v-col sm="12" md="4" class="col-me pb-0 on-phone-chat-box">
+                            <v-card tile id="chatBox" style="height:100%;" class="d-flex on-phone-chat-box-flex-reverse on-desktop-chat-box-flex" color="#36393f">
+                                <v-card flat id="chatContent" height="80%" class="d-flex on-phone-chat-box-flex-reverse pa-5" color="#36393f">
+                                    <p class="body-2">
+                                        ck
+                                        <font color="#dcddde">：这里还没建设完成哦，暂时无法使用w</font>
+                                    </p>
+                                </v-card>
+                                <v-card color="#36393f" height="20%">
+                                    <v-row align="center" class="mx-auto">
+                                    <v-col cols="9" class="on-phone-chat-box-textarea">
+                                        <v-textarea 
+                                            :rows="2"
+                                            no-resize
+                                            solo 
+                                            clearable
+                                            hide-details
+                                            color="white" 
+                                            background-color="#40444b"
+                                            label="发个弹幕呗~" 
+                                            class="no-outline mb-auto"
+                                        ></v-textarea>
+                                    </v-col>
+                                    <v-spacer/>
+                                    <v-col cols="3" class="on-phone-chat-box-textarea">
+                                        <v-btn icon color="white"><v-icon color="white">mdi-arrow-up-thick</v-icon></v-btn>
+                                    </v-col>
+                                    </v-row>
+                                </v-card>
+                            </v-card>
                         </v-col>
-                        </v-row>
-                    </v-card>
-                </v-col>
-            </v-row>
-        </v-card>
+                    </v-row>
+                </v-card>
+            </v-col>
+        </v-row>
     </v-container>
 </template>
-
-
 
 <script>
 
@@ -129,3 +183,29 @@ export default {
     }
 }
 </script>
+
+<style>
+@media screen and (max-width:960px){
+    .on-phone-chat-box{
+        min-height: 400px;
+        margin-bottom: 48px!important;
+    }
+    .on-phone-card-padding-bottom{
+        padding-bottom: 16px!important;
+    }
+    .on-phone-chat-box-flex-reverse{
+        flex-direction:column-reverse;
+    }
+    .on-phone-chat-box-textarea{
+        padding-top: 6px;
+    }
+}
+@media screen and (min-width:960px){
+    .on-desktop-card-padding-bottom{
+        padding-bottom: 50px!important;
+    }
+    .on-desktop-chat-box-flex{
+        flex-direction:column;
+    }
+}
+</style>

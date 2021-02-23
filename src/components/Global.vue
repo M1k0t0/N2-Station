@@ -3,7 +3,11 @@ import axios from 'axios';
 axios.defaults.withCredentials = true;
 
 const BackendAddress="https://live.4g.cx/backend";  // http unsafe
-const debugBackendAddress="https://n2station.live:8443"
+const debugBackendAddress="https://n2station.live:8443";
+const pullAddressHTTPPort=443;
+const pullAddressRTMPPort=1935;
+const pullAddress="https://live.4g.cx:"+pullAddressHTTPPort;
+const pushAddress="rtmp://publish.n2station.live:"+pullAddressRTMPPort;
 const SFMode=false;
 const ERR_MSG={
     'getToken': {
@@ -139,6 +143,10 @@ const request={
 export default{
     BackendAddress,
     debugBackendAddress,
+    pullAddress,
+    pushAddress,
+    pullAddressHTTPPort,
+    pullAddressRTMPPort,
     SFMode,
     ERR_MSG,
     get_err_msg,

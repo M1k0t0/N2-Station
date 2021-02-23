@@ -13,7 +13,7 @@
                         align="center"
                         justify="center"
                     >
-                        <v-col sm="12" md="8" class="col-me">
+                        <v-col sm="12" md="8" class="col-me pl-6">
                             <!-- <video
                             class="pl-sm-12 pr-sm-12 pt-sm-0 pb-sm-0 no-outline"
                             width="100%"
@@ -22,7 +22,7 @@
                                 Your browser is too old which doesn't support HTML5 video.
                             </video> -->
                             <div 
-                            class="ml-3 pt-sm-0 pb-sm-0 no-outline"
+                            class="pt-sm-0 pb-sm-0 no-outline"
                             id="videoFrame"
                             ></div>
                             <v-gravatar v-if="room" class=" ml-sm-8 mt-1 mb-1 mt-md-5 mb-md-5" :size="60" :email="$root.roomList[$route.params.id].user.email" style="border-radius: 60px;" />
@@ -63,7 +63,7 @@ export default {
     }),
     methods: {
         setSource(id){
-            this.player.source = 'https://live.4g.cx/live?port=1935&app=rtmp&stream='+id;
+            this.player.source = this.global_.pullAddress+"/live?port="+this.global_.pullAddressRTMPPort+"&app=rtmp&stream="+id;
             this.$nextTick(() => this.pullVideo());
 
         },

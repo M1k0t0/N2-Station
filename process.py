@@ -14,7 +14,7 @@ def connect_server(addr):
     try:
         config=utils.read_json_file("config.json")
         cli = pymongo.MongoClient(config["db_address"])
-        if config['db_user'] and config['db_pass']:
+        if 'db_user' in config and 'db_pass' in config:
             db=cli.admin
             db.authenticate(config['db_user'],config['db_pass'])
     except BaseException as e:

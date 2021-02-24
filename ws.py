@@ -93,6 +93,7 @@ def chat(socket,room):
             socket.send("auth ok")
 
     while not socket.closed:
+        recv=None
         try:
             with Timeout(15, False): # seems like Timeout() has bug
                 recv=socket.receive()

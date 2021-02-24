@@ -29,6 +29,7 @@ except BaseException as e:    # Not work, solve WIP
 process.check_db(cli)
 
 db=cli["N2-Station"]
+rooms=db['rooms']
 
 def add_client(room,client):
     client_id=str(uuid.uuid4())[0:8]
@@ -72,6 +73,10 @@ def ping(socket):
 
 @ws.route('/api/chat/<room>')
 def chat(socket,room):
+    roomObj=rooms.find_one({"_id":room})
+    if roomObj==None:
+        socket.close()
+
     client_id=add_client(room,socket)
 
     guestMode=True

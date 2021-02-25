@@ -76,6 +76,7 @@ def chat(socket,room):
     roomObj=rooms.find_one({"_id":room})
     if roomObj==None:
         socket.close()
+        return
 
     client_id=add_client(room,socket)
 
@@ -91,6 +92,9 @@ def chat(socket,room):
             guestMode=False
             chat_head='chat '+user.name+';'
             socket.send("auth ok")
+            broadcast(room,'chat 0;'+user.name+" 加入了房间")
+    else:
+        broadcast(room,"chat 0;Guest"+client_id+" 加入了房间")
 
     while not socket.closed:
         recv=None
@@ -100,7 +104,6 @@ def chat(socket,room):
             if recv==None:
                 raise('Timeout or Connection closed')
         except:
-            del_client(room,client_id)
             socket.close()
         else:
             if recv=='PING_PACK':
@@ -126,3 +129,7 @@ def chat(socket,room):
                 broadcast(room,chat_head+data)
     
     del_client(room,client_id)
+    if guestMode:
+        broadcast(room,"chat 0;Guest"+client_id+" 退出了房间")
+    else:
+        broadcast(room,'chat 0;'+user.name+" 退出了房间")

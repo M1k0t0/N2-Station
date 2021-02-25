@@ -82,8 +82,9 @@
                                         :key="index+''"
                                         style=""
                                     >
-                                        <font>{{item[0]}}</font>
-                                        <font color="#dcddde">：{{item[1]}}</font>
+                                        <font v-if="item.length && item[0]!='0'">{{item[0]}}</font>
+                                        <font color="#dcddde" v-if="item.length && item[0]!='0'">：</font>
+                                        <font color="#dcddde" v-if="item.length>1">{{item[1]}}</font>
                                     </p>
                                 </v-card>
                                 <v-card color="#36393f" height="20%">
@@ -180,11 +181,6 @@ export default {
                         }
                     }
                 });
-                this.$root.DPlayer.danmaku.draw({
-                    text: 'DIYgod is amazing',
-                    color: '#fff',
-                    type: 'top',
-                });
                 this.$root.DPlayer.play();
                 this.$root.flvPlayer=flvPlayer;
             }
@@ -211,6 +207,7 @@ export default {
             clearTimeout(this.reconnect_timer);
         },
         on_error(){
+            this.ws_state='已断开，正在重连';
             clearInterval(this.heartbeat_timer);
             if(!this.reconnect_timer)
                 this.initWebSocket();
@@ -237,11 +234,6 @@ export default {
             this.ws.send(data);
         },
         on_close(e){
-            this.ws_state='已断开，正在重连';
-            clearInterval(this.heartbeat_timer);
-            if(!this.reconnect_timer)
-                this.initWebSocket();
-                this.reconnect_timer=setTimeout(()=>this.clear_timeout(), 5000);
             console.log('Room Chat Websocket',e,'Disconnected.');
         },
         clear_timeout(){
@@ -275,11 +267,15 @@ export default {
     beforeRouteUpdate (to, from, next) {
         if(this.$root.flvPlayer) this.$root.flvPlayer.destroy();
         if(this.$root.DPlayer) this.$root.DPlayer.destroy();
-        if(this.ws) this.ws.close();
+        if(this.ws){
+            this.ws.close();
+            this.ws=null;
+        }
         if(this.reconnect_timer) clearTimeout(this.reconnect_timer);
         if(this.heartbeat_timer) clearInterval(this.heartbeat_timer);
         this.login=false;
         this.ws_state="连接中";
+        this.initWebSocket();
         this.msg_list=[];
         this.id = to.params.id;
         this.room=this.$root.roomList[this.id];

@@ -65,6 +65,7 @@ def getRoomList():
         room=utils.delete_key(i,["_id","userID"])
         room["user"]={ "id": user.id, "name": user.name, "email": user.email }
         room["action"]="searchRoom"
+        room["room_status"]=room["status"]
         room["status"]=0
         return jsonify(room)
 
@@ -102,3 +103,24 @@ def getTagList():
                 continue
             tagList['close'].append(j)
     return jsonify({ "data": tagList, "action": "getTagList", "status": 0 })
+
+@info.route('/api/info/getLiveInfo', methods=["POST"])
+def getLiveInfo():
+    try:
+        content=json.loads(request.get_data())
+    except:
+        return jsonify(utils.simple_reply("getLiveInfo", -11))
+    if "id" not in content:
+        return jsonify(utils.simple_reply("getLiveInfo", -10))
+    stat=utils.get_stat()
+    for item in stat['http-flv']['servers'][0]['applications'][0]['live']['streams']:
+        if item["name"]==content["id"]:
+            ret={
+                "clients": max(0,item["nclients"]-1),
+                "room_status": "open" if item["publishing"] else "close",
+                "bitrate": item["bw_in"],
+                "action": "getLiveInfo",
+                "status": 0
+            }
+            return jsonify(ret)
+    return jsonify(utils.simple_reply("getLiveInfo", -1))

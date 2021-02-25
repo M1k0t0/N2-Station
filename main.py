@@ -7,6 +7,9 @@ import pymongo, os, sys, time, uuid, json, utils, process, cron
 from gevent import pywsgi
 from geventwebsocket.handler import WebSocketHandler
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
 from auth import auth
 from info import info
 from user import user
@@ -19,6 +22,11 @@ except BaseException as e:
     sys.exit("json format fail")
 
 app = Flask(__name__)
+limiter = Limiter(
+    app,
+    key_func=get_remote_address,
+    default_limits=["40 per minute", "500 per hour"]
+)
 app.register_blueprint(auth)
 app.register_blueprint(info)
 app.register_blueprint(user)

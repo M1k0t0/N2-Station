@@ -20,6 +20,7 @@ new Vue({
   data:() => ({
     backend: global_.SFMode ? global_.BackendAddress : global_.debugBackendAddress,
     sfmode: global_.SFMode,
+    DPlayer: null,
     flvPlayer: null,
     roomList: {},
     tagList:{ 'open': [], 'close': [] },

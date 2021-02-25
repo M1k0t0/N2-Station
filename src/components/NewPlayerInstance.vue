@@ -54,10 +54,36 @@
                         <v-spacer />
                         <v-col sm="12" md="4" class="col-me pb-0 on-phone-chat-box">
                             <v-card tile id="chatBox" style="height:100%;" class="d-flex on-phone-chat-box-flex-reverse on-desktop-chat-box-flex" color="#36393f">
-                                <v-card flat id="chatContent" height="80%" class="d-flex on-phone-chat-box-flex-reverse pa-5" color="#36393f">
-                                    <p class="body-2">
-                                        ck
-                                        <font color="#dcddde">：这里还没建设完成哦，暂时无法使用w</font>
+                                <v-card 
+                                    height="13%"
+                                    class="d-flex on-phone-chat-box-flex-reverse on-desktop-chat-box-flex px-5 pt-5" 
+                                    color="#36393f"
+                                >
+                                    <p class="body-2 mb-1" v-if="ws_state">
+                                        聊天服务状态
+                                        <font color="#dcddde">：{{ws_state}}</font>
+                                    </p>
+                                    <p class="body-2 mb-1" v-if="ws_state">
+                                        登录状态
+                                        <font color="#dcddde">：{{ login?"在线":"游客" }}</font>
+                                    </p>
+                                </v-card>
+                                <v-card 
+                                    flat 
+                                    id="chatContent" 
+                                    height="67%" 
+                                    class="d-flex on-phone-chat-box-flex-reverse on-desktop-chat-box-flex px-5 pb-5 pt-2" 
+                                    color="#36393f"
+                                    style="overflow-y: auto;flex: 1 1 1px;"
+                                >
+                                    <p 
+                                        class="body-2 mb-1" 
+                                        v-for="(item,index) in msg_list"
+                                        :key="index+''"
+                                        style=""
+                                    >
+                                        <font>{{item[0]}}</font>
+                                        <font color="#dcddde">：{{item[1]}}</font>
                                     </p>
                                 </v-card>
                                 <v-card color="#36393f" height="20%">
@@ -71,13 +97,24 @@
                                             hide-details
                                             color="white" 
                                             background-color="#40444b"
-                                            label="发个弹幕呗~" 
+                                            :disabled="!login"
+                                            :label="login?'发个弹幕呗~':'速速登录plz'"
                                             class="no-outline mb-auto"
+                                            v-model="chat_msg"
                                         ></v-textarea>
                                     </v-col>
                                     <v-spacer/>
                                     <v-col cols="3" class="on-phone-chat-box-textarea">
-                                        <v-btn icon color="white"><v-icon color="white">mdi-arrow-up-thick</v-icon></v-btn>
+                                        <v-btn 
+                                            :disabled="!login || !chat_msg" 
+                                            icon 
+                                            color="white"
+                                            @click="ws_send('message '+chat_msg)"
+                                        >
+                                            <v-icon color="white">
+                                                mdi-arrow-up-thick
+                                            </v-icon>
+                                        </v-btn>
                                     </v-col>
                                     </v-row>
                                 </v-card>
@@ -94,11 +131,19 @@
 
 import flvjs from 'flv.js';
 import DPlayer from 'dplayer';
+import { clearInterval, setInterval } from 'timers';
 
 export default {
     data: () => ({
         player: {},
-        room: null
+        room: null,
+        chat_msg: null,
+        ws: null,
+        login: false,
+        msg_list: [],
+        ws_state: '连接中',
+        reconnect_timer: null,
+        heartbeat_timer: null
     }),
     methods: {
         setSource(id){
@@ -122,6 +167,7 @@ export default {
                         type: 'customFlv',
                         live: true,
                         playbackSpeed: [1],
+                        danmaku: true,
                         customType: {
                             customFlv: function (video) {
                                 flvPlayer = flvjs.createPlayer({
@@ -134,6 +180,11 @@ export default {
                         }
                     }
                 });
+                this.$root.DPlayer.danmaku.draw({
+                    text: 'DIYgod is amazing',
+                    color: '#fff',
+                    type: 'top',
+                });
                 this.$root.DPlayer.play();
                 this.$root.flvPlayer=flvPlayer;
             }
@@ -145,7 +196,60 @@ export default {
                 }else
                     document.getElementById(id).style.height=document.documentElement.clientHeight-document.getElementById('videoFrame').clientHeight-24+'px';
             })
+        },
+        initWebSocket(){
+            const wsurl = "wss://n2station.live:8443/api/chat/"+this.$route.params.id;
+            this.ws = new WebSocket(wsurl);
+            this.ws.onmessage = this.on_message;
+            this.ws.onopen = this.on_open;
+            this.ws.onerror = this.on_error;
+            this.ws.onclose = this.on_close;
+        },
+        on_open(){
+            this.ws_state='已连接';
+            this.heartbeat_timer=setInterval(()=>this.ws_send('PING_PACK'),7000);
+            clearTimeout(this.reconnect_timer);
+        },
+        on_error(){
+            clearInterval(this.heartbeat_timer);
+            if(!this.reconnect_timer)
+                this.initWebSocket();
+                this.reconnect_timer=setTimeout(()=>this.clear_timeout(), 5000);
+        },
+        on_message(e){
+            const recv = e.data;
+            if(recv=="auth ok") this.login=true;
+            if(recv.length>=8 && recv.substring(0,4)=="chat"){ // at least 8 char: "chat 0;a"
+                var username=recv.substring(5,recv.indexOf(';'));
+                var message=recv.substring(recv.indexOf(';')+1);
+                if(this.msg_list.length>=100) this.msg_list.splice(0,1);
+                this.msg_list.push([username,message]);
+                var ele = document.getElementById('chatContent');
+                ele.scrollTop = ele.scrollHeight;
+                // this.$root.DPlayer.danmaku.draw({  // not work
+                //     text: message,
+                //     color: '#fff',
+                //     type: 'top',
+                // })
+            }
+        },
+        ws_send(data){
+            this.ws.send(data);
+        },
+        on_close(e){
+            this.ws_state='已断开，正在重连';
+            clearInterval(this.heartbeat_timer);
+            if(!this.reconnect_timer)
+                this.initWebSocket();
+                this.reconnect_timer=setTimeout(()=>this.clear_timeout(), 5000);
+            console.log('Room Chat Websocket',e,'Disconnected.');
+        },
+        clear_timeout(){
+            clearTimeout(this.reconnect_timer);
         }
+    },
+    created() {
+        this.initWebSocket();
     },
     mounted() {
         this.room=this.$root.roomList[this.$route.params.id];
@@ -171,6 +275,12 @@ export default {
     beforeRouteUpdate (to, from, next) {
         if(this.$root.flvPlayer) this.$root.flvPlayer.destroy();
         if(this.$root.DPlayer) this.$root.DPlayer.destroy();
+        if(this.ws) this.ws.close();
+        if(this.reconnect_timer) clearTimeout(this.reconnect_timer);
+        if(this.heartbeat_timer) clearInterval(this.heartbeat_timer);
+        this.login=false;
+        this.ws_state="连接中";
+        this.msg_list=[];
         this.id = to.params.id;
         this.room=this.$root.roomList[this.id];
         this.loadRoom(this.id);

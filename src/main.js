@@ -8,7 +8,7 @@ import global_ from './components/Global';
 
 Vue.config.productionTip = false;
 Vue.prototype.global_ = global_;
-Vue.component('v-gravatar', Gravatar);
+Vue.component('v-gravatar', Gravatar); // update cdn url by changing it's source code
 Vue.use(lineClamp, {
   importCss: true
 })
@@ -35,6 +35,7 @@ new Vue({
     openRoom: {},
     closeRoom: {},
     deleteRoom: {},
+    getLiveInfo: {},
     panelMenuIndex: 0
   })
 }).$mount('#app')

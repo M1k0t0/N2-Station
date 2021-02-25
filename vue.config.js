@@ -1,4 +1,4 @@
-const SWPrecacheWebpackPlugin = require('sw-precache-webpack-plugin')
+const SWPrecacheWebpackPlugin = require('sw-precache-webpack-plugin') // need to edit it's source code
 
 module.exports = {
   "publicPath": '/',

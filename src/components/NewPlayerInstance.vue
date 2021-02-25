@@ -109,7 +109,7 @@
                                             :disabled="!login || !chat_msg" 
                                             icon 
                                             color="white"
-                                            @click="ws_send('message '+chat_msg)"
+                                            @click="ws_send('message '+chat_msg);chat_msg=null;"
                                         >
                                             <v-icon color="white">
                                                 mdi-arrow-up-thick

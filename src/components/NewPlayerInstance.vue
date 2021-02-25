@@ -152,7 +152,8 @@ export default {
         heartbeat_timer: null,
         getLiveInfo: {},
         bitrate_monitor: null,
-        closeWs: false
+        closeWs: false,
+        wsurl_base: "wss://n2station.live:8443/api/chat/"
     }),
     methods: {
         setSource(id){
@@ -176,7 +177,6 @@ export default {
                         type: 'customFlv',
                         live: true,
                         playbackSpeed: [1],
-                        danmaku: true,
                         customType: {
                             customFlv: function (video) {
                                 flvPlayer = flvjs.createPlayer({
@@ -201,8 +201,9 @@ export default {
                     document.getElementById(id).style.height=document.documentElement.clientHeight-document.getElementById('videoFrame').clientHeight-24+'px';
             })
         },
-        initWebSocket(){
-            const wsurl = "wss://n2station.live:8443/api/chat/"+this.$route.params.id;
+        initWebSocket(id){
+            if(this.ws) return;
+            const wsurl = this.wsurl_base+id;
             this.ws = new WebSocket(wsurl);
             this.ws.onmessage = this.on_message;
             this.ws.onopen = this.on_open;
@@ -210,18 +211,21 @@ export default {
             this.ws.onclose = this.on_close;
         },
         on_open(){
+            this.closeWs=false;
             this.ws_state='已连接';
             this.heartbeat_timer=setInterval(()=>this.ws_send('PING_PACK'),7000);
             clearTimeout(this.reconnect_timer);
         },
         on_error(){
-            this.ws_state='已断开，正在重连';
+            this.ws_state='发生错误，尝试重连';
             clearInterval(this.heartbeat_timer);
-            if(!this.reconnect_timer)
-                this.initWebSocket();
+            if(!this.reconnect_timer){
+                this.initWebSocket(this.$route.params.id);
                 this.reconnect_timer=setTimeout(()=>this.clear_timeout(), 5000);
+            }
         },
         on_message(e){
+            if(e.target.url!=this.wsurl_base+this.$route.params.id) return;
             const recv = e.data;
             if(recv=="auth ok") this.login=true;
             if(recv.length>=8 && recv.substring(0,4)=="chat"){ // at least 8 char: "chat 0;a"
@@ -242,26 +246,40 @@ export default {
             this.ws.send(data);
         },
         on_close(e){
-            this.ws_state='已断开，正在重连';
-            clearInterval(this.heartbeat_timer);
-            if(!this.reconnect_timer && this.closeWs)
-                this.initWebSocket();
-                this.reconnect_timer=setTimeout(()=>this.clear_timeout(), 5000);
+            if(e.target.url==this.wsurl_base+this.$route.params.id){
+                if(!this.reconnect_timer && !this.closeWs){
+                    this.ws_state='正在重新建立连接';
+                    this.ws.close();
+                    this.ws=null;
+                    this.initWebSocket(this.$route.params.id);
+                    this.reconnect_timer=setTimeout(()=>{
+                        this.ws_state='正在重新建立连接';
+                        this.ws.close();
+                        this.ws=null;
+                        this.initWebSocket(this.$route.params.id);
+                        this.clear_timeout();
+                    }, 5000);
+                }else if(this.closeWs){
+                    clearInterval(this.heartbeat_timer);
+                }
+            }
             console.log('Room Chat Websocket',e,'Disconnected.');
         },
         clear_timeout(){
             clearTimeout(this.reconnect_timer);
+            this.reconnect_timer=null;
         }
     },
     created() {
-        this.initWebSocket();
-        if(!this.bitrate_monitor)
+        this.initWebSocket(this.$route.params.id);
+        if(!this.bitrate_monitor){
             this.global_.request.getLiveInfo(this,this.$route.params.id).then(() => {
                 this.getLiveInfo=this.$root.getLiveInfo;
             });
             this.bitrate_monitor=setInterval(()=>this.global_.request.getLiveInfo(this,this.$route.params.id).then(() => {
                 this.getLiveInfo=this.$root.getLiveInfo;
-            }),10000);
+            }),20000);
+        }
     },
     mounted() {
         this.room=this.$root.roomList[this.$route.params.id];
@@ -296,17 +314,17 @@ export default {
         if(this.heartbeat_timer) clearInterval(this.heartbeat_timer);
         if(this.bitrate_monitor) clearInterval(this.bitrate_monitor);
         if(to.path.substring(0,6)=="/live/"){
-            if(!this.bitrate_monitor)
+            if(!this.bitrate_monitor){
                 this.global_.request.getLiveInfo(this,this.$route.params.id).then(() => {
                     this.getLiveInfo=this.$root.getLiveInfo;
                 });
                 this.bitrate_monitor=setInterval(()=>this.global_.request.getLiveInfo(this,this.$route.params.id).then(() => {
                     this.getLiveInfo=this.$root.getLiveInfo;
-                }),10000);
+                }),20000);
+            }
             this.login=false;
-            this.closeWs=false;
             this.ws_state="连接中";
-            this.initWebSocket();
+            this.initWebSocket(to.params.id);
             this.msg_list=[];
             this.id = to.params.id;
             this.room=this.$root.roomList[this.id];

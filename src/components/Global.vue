@@ -138,6 +138,16 @@ const request={
         .catch(error => {
             console.log(error);
         })
+    },
+    getLiveInfo: async function(that,id){
+        await axios
+        .post(that.$root.backend+'/api/info/getLiveInfo',{id})
+        .then(response => {
+            that.$root.getLiveInfo = response.data; // full data returned
+        })
+        .catch(error => {
+            console.log(error);
+        })
     }
 }
 export default{

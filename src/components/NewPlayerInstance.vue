@@ -55,7 +55,7 @@
                         <v-col sm="12" md="4" class="col-me pb-0 on-phone-chat-box">
                             <v-card tile id="chatBox" style="height:100%;" class="d-flex on-phone-chat-box-flex-reverse on-desktop-chat-box-flex" color="#36393f">
                                 <v-card 
-                                    height="13%"
+                                    height="20%"
                                     class="d-flex on-phone-chat-box-flex-reverse on-desktop-chat-box-flex px-5 pt-5" 
                                     color="#36393f"
                                 >
@@ -67,11 +67,15 @@
                                         登录状态
                                         <font color="#dcddde">：{{ login?"在线":"游客" }}</font>
                                     </p>
+                                    <p class="body-2 mb-1">
+                                        房间码率(Kbps)
+                                        <font color="#dcddde">：{{ getLiveInfo.bitrate?getLiveInfo.bitrate/1000:"0" }}</font>
+                                    </p>
                                 </v-card>
                                 <v-card 
                                     flat 
                                     id="chatContent" 
-                                    height="67%" 
+                                    height="60%" 
                                     class="d-flex on-phone-chat-box-flex-reverse on-desktop-chat-box-flex px-5 pb-5 pt-2" 
                                     color="#36393f"
                                     style="overflow-y: auto;flex: 1 1 1px;"
@@ -102,6 +106,7 @@
                                             :label="login?'发个弹幕呗~':'速速登录plz'"
                                             class="no-outline mb-auto"
                                             v-model="chat_msg"
+                                            @keyup.enter.exact="ws_send('message '+chat_msg);chat_msg=null;"
                                         ></v-textarea>
                                     </v-col>
                                     <v-spacer/>
@@ -144,7 +149,10 @@ export default {
         msg_list: [],
         ws_state: '连接中',
         reconnect_timer: null,
-        heartbeat_timer: null
+        heartbeat_timer: null,
+        getLiveInfo: {},
+        bitrate_monitor: null,
+        closeWs: false
     }),
     methods: {
         setSource(id){
@@ -234,6 +242,11 @@ export default {
             this.ws.send(data);
         },
         on_close(e){
+            this.ws_state='已断开，正在重连';
+            clearInterval(this.heartbeat_timer);
+            if(!this.reconnect_timer && this.closeWs)
+                this.initWebSocket();
+                this.reconnect_timer=setTimeout(()=>this.clear_timeout(), 5000);
             console.log('Room Chat Websocket',e,'Disconnected.');
         },
         clear_timeout(){
@@ -242,6 +255,13 @@ export default {
     },
     created() {
         this.initWebSocket();
+        if(!this.bitrate_monitor)
+            this.global_.request.getLiveInfo(this,this.$route.params.id).then(() => {
+                this.getLiveInfo=this.$root.getLiveInfo;
+            });
+            this.bitrate_monitor=setInterval(()=>this.global_.request.getLiveInfo(this,this.$route.params.id).then(() => {
+                this.getLiveInfo=this.$root.getLiveInfo;
+            }),10000);
     },
     mounted() {
         this.room=this.$root.roomList[this.$route.params.id];
@@ -268,23 +288,35 @@ export default {
         if(this.$root.flvPlayer) this.$root.flvPlayer.destroy();
         if(this.$root.DPlayer) this.$root.DPlayer.destroy();
         if(this.ws){
+            this.closeWs=true;
             this.ws.close();
             this.ws=null;
         }
         if(this.reconnect_timer) clearTimeout(this.reconnect_timer);
         if(this.heartbeat_timer) clearInterval(this.heartbeat_timer);
-        this.login=false;
-        this.ws_state="连接中";
-        this.initWebSocket();
-        this.msg_list=[];
-        this.id = to.params.id;
-        this.room=this.$root.roomList[this.id];
-        this.loadRoom(this.id);
-        this.$set(this.$root.bread,1,{
-            text: this.room.title,
-            disabled: true,
-            href: '#/live/'+this.$route.params.id,
-        });
+        if(this.bitrate_monitor) clearInterval(this.bitrate_monitor);
+        if(to.path.substring(0,6)=="/live/"){
+            if(!this.bitrate_monitor)
+                this.global_.request.getLiveInfo(this,this.$route.params.id).then(() => {
+                    this.getLiveInfo=this.$root.getLiveInfo;
+                });
+                this.bitrate_monitor=setInterval(()=>this.global_.request.getLiveInfo(this,this.$route.params.id).then(() => {
+                    this.getLiveInfo=this.$root.getLiveInfo;
+                }),10000);
+            this.login=false;
+            this.closeWs=false;
+            this.ws_state="连接中";
+            this.initWebSocket();
+            this.msg_list=[];
+            this.id = to.params.id;
+            this.room=this.$root.roomList[this.id];
+            this.loadRoom(this.id);
+            this.$set(this.$root.bread,1,{
+                text: this.room.title,
+                disabled: true,
+                href: '#/live/'+this.$route.params.id,
+            });
+        }
         next();
     }
 }

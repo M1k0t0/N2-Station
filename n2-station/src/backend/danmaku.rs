@@ -17,13 +17,14 @@ const TIMEOUT_DURATION: Duration = Duration::from_secs(10);
 enum Message {
     Message { name: String, msg: String },
     KickOut { reason: String },
+    MemberUpdate { sessions: u32 },
 }
 
 #[derive(Message)]
 #[rtype(usize)]
 struct Connect {
     room: String,
-    name: String,
+    name: Option<String>,
     addr: Recipient<Message>,
 }
 
@@ -54,7 +55,7 @@ pub struct CloseRoom {
 
 pub struct ChatServer {
     peers: HashSet<String>,
-    sessions: HashMap<usize, (String, String, Recipient<Message>)>,
+    sessions: HashMap<usize, (String, Option<String>, Recipient<Message>)>,
     rooms: HashMap<String, HashSet<usize>>,
     rng: ThreadRng,
 }
@@ -70,7 +71,7 @@ impl ChatServer {
     }
 
     fn send_message(&self, session: usize, message: &str) {
-        if let Some((room, name, recp)) = self.sessions.get(&session) {
+        if let Some((room, Some(name), recp)) = self.sessions.get(&session) {
             let _ = recp.do_send(Message::Message {
                 name: name.clone(),
                 msg: message.to_owned(),
@@ -102,6 +103,17 @@ impl ChatServer {
             }
         }
     }
+
+    fn notify_update(&self, room: &str) {
+        let sessions = self.rooms.get(room).map(|s| s.len()).unwrap_or(0) as u32;
+        if let Some(receivers) = self.rooms.get(room) {
+            for receiver in receivers {
+                if let Some((_, _, addr)) = self.sessions.get(receiver) {
+                    let _ = addr.do_send(Message::MemberUpdate { sessions });
+                }
+            }
+        }
+    }
 }
 
 impl Actor for ChatServer {
@@ -112,20 +124,37 @@ impl Handler<Connect> for ChatServer {
     type Result = usize;
 
     fn handle(&mut self, msg: Connect, _: &mut Self::Context) -> Self::Result {
-        if self.peers.contains(&msg.name) {
-            return 0;
-        }
-        if self.rooms.contains_key(&msg.room) {
-            let id = self.rng.gen_range(1..std::usize::MAX);
-            self.broadcast_message(&msg.room, &format!("{} joined the room!", msg.name));
-            self.rooms
-                .entry(msg.room.clone())
-                .or_insert_with(HashSet::new)
-                .insert(id);
-            self.sessions.insert(id, (msg.room, msg.name, msg.addr));
-            id
+        let Connect { name, room, addr } = msg;
+        if let Some(name) = name {
+            if self.peers.contains(&name) {
+                return 0;
+            }
+            if self.rooms.contains_key(&room) {
+                let id = self.rng.gen_range(1..std::usize::MAX);
+                self.broadcast_message(&room, &format!("{} joined the room!", name));
+                self.rooms
+                    .entry(room.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(id);
+                self.sessions.insert(id, (room.clone(), Some(name), addr));
+                self.notify_update(&room);
+                id
+            } else {
+                0
+            }
         } else {
-            0
+            if self.rooms.contains_key(&room) {
+                let id = self.rng.gen_range(1..std::usize::MAX);
+                self.rooms
+                    .entry(room.clone())
+                    .or_insert_with(HashSet::new)
+                    .insert(id);
+                self.sessions.insert(id, (room.clone(), None, addr));
+                self.notify_update(&room);
+                id
+            } else {
+                0
+            }
         }
     }
 }
@@ -135,10 +164,15 @@ impl Handler<Disconnect> for ChatServer {
 
     fn handle(&mut self, msg: Disconnect, _: &mut Self::Context) -> Self::Result {
         if let Some((room, name, _)) = self.sessions.get(&msg.id) {
-            self.peers.remove(name);
+            if let Some(name) = name {
+                self.peers.remove(name);
+            }
             if let Some(sessions) = self.rooms.get_mut(room) {
                 sessions.remove(&msg.id);
-                self.broadcast_message(room, &format!("{} left the room!", name));
+                if let Some(name) = name {
+                    self.broadcast_message(room, &format!("{} left the room!", name));
+                }
+                self.notify_update(room);
             }
         }
     }
@@ -181,7 +215,7 @@ pub struct DanmakuSession {
     id: usize,
     heartbeat: Instant,
     room: String,
-    name: String,
+    name: Option<String>,
     addr: Addr<ChatServer>,
 }
 
@@ -231,17 +265,18 @@ impl Handler<Message> for DanmakuSession {
                 ctx.text(format!("chat 0;You are kicked out due to: {}", reason));
                 ctx.stop()
             }
+            Message::MemberUpdate { sessions } => ctx.text(format!("members {}", sessions)),
         }
     }
 }
 
 impl DanmakuSession {
-    pub fn new(room: &str, name: &str, svr: Addr<ChatServer>) -> Self {
+    pub fn new(room: &str, name: Option<&str>, svr: Addr<ChatServer>) -> Self {
         Self {
             id: 0,
             heartbeat: Instant::now(),
             room: room.to_owned(),
-            name: name.to_owned(),
+            name: name.map(|s| s.to_owned()),
             addr: svr,
         }
     }

@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 actix-web = { version = "3", features = ["openssl"] }
+# actix-web = { version = "4.0.0-beta.3", features = ["openssl"] }
 rbatis = { version = "1.8.71", default-features = false, features = ["actix-mysql"] }
 argh = "0.1.4"
 anyhow = "1.0.38"

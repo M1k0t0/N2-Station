@@ -144,6 +144,7 @@ mod api {
                             &room.title,
                             &room.desc,
                             &room.tag,
+                            &room.icon,
                         )
                         .await
                         {
@@ -418,16 +419,20 @@ pub mod chat {
         stream: web::Payload,
         svr: web::Data<Addr<ChatServer>>,
     ) -> Result<HttpResponse, Error> {
-        if let Some(uuid) = id.identity() {
-            let (room,) = path.into_inner();
-            if let Ok(raw) = handler::raw_room_by_stream_name(&room).await {
-                if let Some(raw) = raw {
-                    if raw.is_open() {
+        let (room,) = path.into_inner();
+        if let Ok(raw) = handler::raw_room_by_stream_name(&room).await {
+            if let Some(raw) = raw {
+                if raw.is_open() {
+                    if let Some(uuid) = id.identity() {
                         if let Ok(Some(user)) =
                             handler::search_user_by_uuid(Uuid::parse_str(&uuid).unwrap()).await
                         {
                             ws::start(
-                                DanmakuSession::new(&room, &user.name(), svr.get_ref().clone()),
+                                DanmakuSession::new(
+                                    &room,
+                                    Some(&user.name()),
+                                    svr.get_ref().clone(),
+                                ),
                                 &req,
                                 stream,
                             )
@@ -435,16 +440,20 @@ pub mod chat {
                             Ok(HttpResponse::InternalServerError().finish())
                         }
                     } else {
-                        Ok(HttpResponse::Ok().body("Room is closed!"))
+                        ws::start(
+                            DanmakuSession::new(&room, None, svr.get_ref().clone()),
+                            &req,
+                            stream,
+                        )
                     }
                 } else {
-                    Ok(HttpResponse::Ok().body("No such room exists!"))
+                    Ok(HttpResponse::Ok().body("Room is closed!"))
                 }
             } else {
-                Ok(HttpResponse::InternalServerError().finish())
+                Ok(HttpResponse::Ok().body("No such room exists!"))
             }
         } else {
-            Ok(HttpResponse::Forbidden().finish())
+            Ok(HttpResponse::InternalServerError().finish())
         }
     }
 }

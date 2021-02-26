@@ -21,6 +21,7 @@ pub mod form {
         pub title: String,
         pub desc: String,
         pub tag: String,
+        pub icon: String,
     }
 
     #[derive(Default, serde::Deserialize)]
@@ -76,6 +77,7 @@ pub mod response {
         tag: Option<String>,
         open: i8,
         stream_token: Option<String>,
+        room_icon: String,
     }
 
     #[derive(serde::Serialize)]
@@ -87,6 +89,7 @@ pub mod response {
         status: String,
         user: BakedUser,
         stream_token: Option<Uuid>,
+        room_icon: String,
     }
 
     #[crud_enable(table_name:"users"|id_name:"uuid")]
@@ -131,6 +134,7 @@ pub mod response {
             title: &str,
             desc: &str,
             tag: Option<String>,
+            room_icon: &str,
         ) -> Self {
             Self {
                 owner_uuid: String::from(owner_uuid),
@@ -140,6 +144,7 @@ pub mod response {
                 tag,
                 open: 0,
                 stream_token: None,
+                room_icon: String::from(room_icon),
             }
         }
 
@@ -171,6 +176,7 @@ pub mod response {
                 status: status.to_string(),
                 user: raw.bake(),
                 stream_token,
+                room_icon: self.room_icon.clone(),
             })
         }
 
@@ -322,6 +328,7 @@ pub mod handler {
         title: &str,
         desc: &str,
         tag: &str,
+        icon: &str,
     ) -> Result<()> {
         let tag = if tag.is_empty() {
             None
@@ -334,7 +341,10 @@ pub mod handler {
             }
         };
         RBATIS
-            .save("", &RawRoom::new(creator, stream_id, title, desc, tag))
+            .save(
+                "",
+                &RawRoom::new(creator, stream_id, title, desc, tag, icon),
+            )
             .await?;
         Ok(())
     }

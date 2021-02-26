@@ -38,7 +38,12 @@ Information needed to run the Backend is contained in `config.json`, which shoul
     "room_creation_limit": 5, //Limit number of room created per user
     "room_open_limit": 2, //The number of room that could be open status globally
     "authorization_force_https": true, //Wheter authorization requires https forcibly, if true with http, no cookies will be set
-    "debug": false //enable debug mode - Access-Control-Allow-Origin: * will be appended to headers
+    "allow_origin": "null", // Access-Control-Allow-Origin, optional
+    "allow_credentials": false, // Access-Control-Allow-Credentials, optional
+    "https": { // optional
+      "private_key": "private.pem",
+      "certificate_chain": "cert_chain.pem",
+    }
 }
 ```
 
@@ -368,7 +373,8 @@ The Backend provides users with such a system based on `websocket` protocol
 
 ### Implementation
 
-The chat websocket entry lies under `/chat/{room}`, where `{room}` should be substituted for `stream_id` of a room. That is to say, any __authorized__ request to such routes will get upgraded to `websocket` protocol
+The chat websocket entry lies under `/chat/{room}`, where `{room}` should be substituted for `stream_id` of a room.
+Authorization is unnecessary to connect to the session but only authorized connections are able to send message.
 
 ```javascript
 let ws = new WebSocket("ws://localhost/chat/demo_room");
@@ -382,7 +388,8 @@ Server will send a `Ping` message every 5 secs and client with no response withi
 Except that, all informations are transferred through `Text`.
 
 - From Server
-  - `chat <user>;<message>` - chat `<message>` received from `<user>`, the first `;` is seen as a delimeter and others should be seen as part of the message body. Specially, if `<user>` is `0`, this is a room broadcast sent from server.
+  - `chat <user>;<message>` - chat `<message>` received from `<user>`, the first `;` is seen as a delimeter and others should be seen as part of the message body. Specially, if `<user>` is `0`, this is a room broadcast sent from server. Emission from unauthorized connection will be discarded(i.e. ignored).
+  - `members <uint>` - actively sent from server when connection/disconnection occurs, is useful to update watcher counter.
 - From Client
   - `message <message>` - send messages to the room
 
@@ -393,4 +400,4 @@ Except that, all informations are transferred through `Text`.
 - More appropriate error handling and rensponse __*__
 - OAuth for authentication(version 0.2 feature)
 - Support streaming natively(version ?)
-- Danmaku system implementation __*__
+- Danmaku system implementation(Considered Done)

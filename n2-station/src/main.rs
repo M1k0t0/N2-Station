@@ -1,9 +1,8 @@
 use actix::Actor;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{
-    dev::Service,
-    http::header::{HeaderValue, ACCESS_CONTROL_ALLOW_CREDENTIALS, ACCESS_CONTROL_ALLOW_ORIGIN},
-    middleware::Logger,
+    http::header::{ACCESS_CONTROL_ALLOW_CREDENTIALS, ACCESS_CONTROL_ALLOW_ORIGIN},
+    middleware::{Condition, DefaultHeaders, Logger},
     web, App, HttpServer,
 };
 use anyhow::Result;
@@ -40,8 +39,8 @@ struct ServerConfig {
     room_creation_limit: u64,
     room_open_limit: u64,
     authorization_force_https: bool,
-    allow_origin: String,
-    allow_credentials: bool,
+    allow_origin: Option<String>,
+    allow_credentials: Option<bool>,
     https: Option<SslSettings>,
 }
 
@@ -79,22 +78,20 @@ async fn main() -> Result<()> {
             .unwrap();
         HttpServer::new(move || {
             App::new()
-                .wrap_fn(|req, srv| {
-                    let cfg = req.app_data::<web::Data<ServerConfig>>().unwrap().clone();
-                    let fut = srv.call(req);
-                    async move {
-                        let mut res = fut.await?;
-                        res.headers_mut().insert(
-                            ACCESS_CONTROL_ALLOW_ORIGIN,
-                            HeaderValue::from_str(&cfg.allow_origin.clone()).unwrap(),
-                        );
-                        res.headers_mut().insert(
-                            ACCESS_CONTROL_ALLOW_CREDENTIALS,
-                            HeaderValue::from_str(&cfg.allow_credentials.to_string()).unwrap(),
-                        );
-                        Ok(res)
-                    }
-                })
+                .wrap(Condition::new(
+                    config.allow_origin.is_some(),
+                    DefaultHeaders::new().header(
+                        ACCESS_CONTROL_ALLOW_ORIGIN,
+                        config.allow_origin.clone().unwrap_or_default(),
+                    ),
+                ))
+                .wrap(Condition::new(
+                    config.allow_credentials.is_some(),
+                    DefaultHeaders::new().header(
+                        ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                        config.allow_credentials.unwrap_or_default().to_string(),
+                    ),
+                ))
                 .wrap(Logger::default())
                 .wrap(IdentityService::new(
                     CookieIdentityPolicy::new(&[0; 32])
@@ -111,22 +108,20 @@ async fn main() -> Result<()> {
     } else {
         HttpServer::new(move || {
             App::new()
-                .wrap_fn(|req, srv| {
-                    let cfg = req.app_data::<web::Data<ServerConfig>>().unwrap().clone();
-                    let fut = srv.call(req);
-                    async move {
-                        let mut res = fut.await?;
-                        res.headers_mut().insert(
-                            ACCESS_CONTROL_ALLOW_ORIGIN,
-                            HeaderValue::from_str(&cfg.allow_origin.clone()).unwrap(),
-                        );
-                        res.headers_mut().insert(
-                            ACCESS_CONTROL_ALLOW_CREDENTIALS,
-                            HeaderValue::from_str(&cfg.allow_credentials.to_string()).unwrap(),
-                        );
-                        Ok(res)
-                    }
-                })
+                .wrap(Condition::new(
+                    config.allow_origin.is_some(),
+                    DefaultHeaders::new().header(
+                        ACCESS_CONTROL_ALLOW_ORIGIN,
+                        config.allow_origin.clone().unwrap_or_default(),
+                    ),
+                ))
+                .wrap(Condition::new(
+                    config.allow_credentials.is_some(),
+                    DefaultHeaders::new().header(
+                        ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                        config.allow_credentials.unwrap_or_default().to_string(),
+                    ),
+                ))
                 .wrap(Logger::default())
                 .wrap(IdentityService::new(
                     CookieIdentityPolicy::new(&[0; 32])
@@ -171,7 +166,8 @@ async fn initialize_database() -> Result<()> {
         `description` VARCHAR(20) NOT NULL,
         `tag` VARCHAR(1024) NULL,
         `open` BOOL NOT NULL,
-        `stream_token` CHAR(32) NULL
+        `stream_token` CHAR(32) NULL，
+        `room_icon` MEDIUMBLOB(16777215) NOT NULL
     )
     "#,
         )

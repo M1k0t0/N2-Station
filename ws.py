@@ -80,6 +80,8 @@ def chat(socket,room):
 
     client_id=add_client(room,socket)
 
+    broadcast(room,"members "+str(len(pool[room])))
+
     guestMode=True
 
     token=request.cookies.get('Authorization')
@@ -92,9 +94,9 @@ def chat(socket,room):
             guestMode=False
             chat_head='chat '+user.name+';'
             socket.send("auth ok")
-            broadcast(room,'chat 0;'+user.name+" 加入了房间")
+            broadcast(room,'join '+user.name+";"+str(len(pool[room])))
     else:
-        broadcast(room,"chat 0;Guest"+client_id+" 加入了房间")
+        broadcast(room,"join Guest"+client_id+";"+str(len(pool[room])))
 
     while not socket.closed:
         recv=None
@@ -126,10 +128,10 @@ def chat(socket,room):
                         socket.send("auth ok")
 
             if func=="message" and not guestMode:
-                broadcast(room,chat_head+data)
+                broadcast(room,chat_head+data.replace('\n',''))
     
     del_client(room,client_id)
     if guestMode:
-        broadcast(room,"chat 0;Guest"+client_id+" 退出了房间")
+        broadcast(room,"leave Guest"+client_id+";"+str(len(pool[room])))
     else:
-        broadcast(room,'chat 0;'+user.name+" 退出了房间")
+        broadcast(room,'leave '+user.name+";"+str(len(pool[room])))

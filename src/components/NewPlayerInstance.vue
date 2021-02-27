@@ -13,8 +13,18 @@
                         style="flex-wrap: wrap;"
                     >
                         <v-col sm="12" md="8" class="col-me">
-                            <p class="title mb-0">{{ room.title }}</p>
-                            <p class="caption mb-2">{{ room.desc }}</p>
+                            <v-row align="center">
+                                <v-col cols="10" class="py-0">
+                                    <p class="title mb-0">{{ room.title }}</p>
+                                    <p class="caption">{{ room.desc }}</p>
+                                </v-col>
+                                <v-col cols="2" class="py-0 text-end">
+                                    <v-avatar
+                                    :color="online_total?'teal':'error'"
+                                    size="26"
+                                    >{{ online_total }}</v-avatar>
+                                </v-col>
+                            </v-row>
                             <!-- <video
                             class="pl-sm-12 pr-sm-12 pt-sm-0 pb-sm-0 no-outline"
                             width="100%"
@@ -40,7 +50,7 @@
                                             style="display:inline; border-radius: 60px;" 
                                         />
                                     </v-col>
-                                    <v-col cols="5">
+                                    <v-col cols="10">
                                         <p 
                                             v-if="room" 
                                             style="display:inline;font-size: 25px;"
@@ -153,7 +163,8 @@ export default {
         getLiveInfo: {},
         bitrate_monitor: null,
         closeWs: false,
-        wsurl_base: "wss://n2station.live:8443/api/chat/"
+        wsurl_base: "wss://n2station.live:8443/api/chat/",
+        online_total: 0
     }),
     methods: {
         setSource(id){
@@ -212,16 +223,24 @@ export default {
         },
         on_open(){
             this.closeWs=false;
+            clearInterval(this.reconnect_timer);
+            this.reconnect_timer=null;
             this.ws_state='已连接';
             this.heartbeat_timer=setInterval(()=>this.ws_send('PING_PACK'),7000);
-            clearTimeout(this.reconnect_timer);
         },
         on_error(){
             this.ws_state='发生错误，尝试重连';
             clearInterval(this.heartbeat_timer);
             if(!this.reconnect_timer){
+                this.ws.close();
+                this.ws=null;
                 this.initWebSocket(this.$route.params.id);
-                this.reconnect_timer=setTimeout(()=>this.clear_timeout(), 5000);
+                this.reconnect_timer=setInterval(()=>{
+                    this.ws_state='发生错误，尝试重连';
+                    this.ws.close();
+                    this.ws=null;
+                    this.initWebSocket(this.$route.params.id);
+                }, 7000);
             }
         },
         on_message(e){
@@ -229,17 +248,26 @@ export default {
             const recv = e.data;
             if(recv=="auth ok") this.login=true;
             if(recv.length>=8 && recv.substring(0,4)=="chat"){ // at least 8 char: "chat 0;a"
-                var username=recv.substring(5,recv.indexOf(';'));
-                var message=recv.substring(recv.indexOf(';')+1);
-                if(this.msg_list.length>=100) this.msg_list.splice(0,1);
-                this.msg_list.push([username,message]);
-                var ele = document.getElementById('chatContent');
-                ele.scrollTop = ele.scrollHeight;
+                let username=recv.substring(5,recv.indexOf(';'));
+                let message=recv.substring(recv.indexOf(';')+1);
+                this.push_message([username,message]);
                 // this.$root.DPlayer.danmaku.draw({  // not work
                 //     text: message,
                 //     color: '#fff',
                 //     type: 'top',
                 // })
+            }
+            if(recv.length>=9 && recv.substring(0,7)=="members")
+                this.online_total=recv.substring(8);
+            if(recv.length>=8 && recv.substring(0,4)=="join"){
+                let username=recv.substring(5,recv.indexOf(';'));
+                this.online_total=recv.substring(recv.indexOf(';')+1);
+                this.push_message(["0",username+" 加入了房间"]);
+            }
+            if(recv.length>=9 && recv.substring(0,5)=="leave"){
+                let username=recv.substring(6,recv.indexOf(';'));
+                this.online_total=recv.substring(recv.indexOf(';')+1);
+                this.push_message(["0",username+" 退出了房间"]);
             }
         },
         ws_send(data){
@@ -252,22 +280,23 @@ export default {
                     this.ws.close();
                     this.ws=null;
                     this.initWebSocket(this.$route.params.id);
-                    this.reconnect_timer=setTimeout(()=>{
+                    this.reconnect_timer=setInterval(()=>{
                         this.ws_state='正在重新建立连接';
                         this.ws.close();
                         this.ws=null;
                         this.initWebSocket(this.$route.params.id);
-                        this.clear_timeout();
-                    }, 5000);
+                    }, 7000);
                 }else if(this.closeWs){
                     clearInterval(this.heartbeat_timer);
                 }
             }
             console.log('Room Chat Websocket',e,'Disconnected.');
         },
-        clear_timeout(){
-            clearTimeout(this.reconnect_timer);
-            this.reconnect_timer=null;
+        push_message(msg){
+            if(this.msg_list.length>=100) this.msg_list.splice(0,1);
+            this.msg_list.push(msg);
+            var ele = document.getElementById('chatContent');
+            ele.scrollTop = ele.scrollHeight;
         }
     },
     created() {
@@ -303,25 +332,22 @@ export default {
         }
     },
     beforeRouteUpdate (to, from, next) {
-        if(this.$root.flvPlayer) this.$root.flvPlayer.destroy();
         if(this.$root.DPlayer) this.$root.DPlayer.destroy();
         if(this.ws){
             this.closeWs=true;
             this.ws.close();
             this.ws=null;
         }
-        if(this.reconnect_timer) clearTimeout(this.reconnect_timer);
+        if(this.reconnect_timer) clearInterval(this.reconnect_timer);
         if(this.heartbeat_timer) clearInterval(this.heartbeat_timer);
         if(this.bitrate_monitor) clearInterval(this.bitrate_monitor);
         if(to.path.substring(0,6)=="/live/"){
-            if(!this.bitrate_monitor){
-                this.global_.request.getLiveInfo(this,this.$route.params.id).then(() => {
-                    this.getLiveInfo=this.$root.getLiveInfo;
-                });
-                this.bitrate_monitor=setInterval(()=>this.global_.request.getLiveInfo(this,this.$route.params.id).then(() => {
-                    this.getLiveInfo=this.$root.getLiveInfo;
-                }),20000);
-            }
+            this.global_.request.getLiveInfo(this,to.params.id).then(() => {
+                this.getLiveInfo=this.$root.getLiveInfo;
+            });
+            this.bitrate_monitor=setInterval(()=>this.global_.request.getLiveInfo(this,to.params.id).then(() => {
+                this.getLiveInfo=this.$root.getLiveInfo;
+            }),20000);
             this.login=false;
             this.ws_state="连接中";
             this.initWebSocket(to.params.id);
@@ -336,6 +362,17 @@ export default {
             });
         }
         next();
+    },
+    destroyed(){
+        if(this.$root.DPlayer) this.$root.DPlayer.destroy();
+        if(this.ws){
+            this.closeWs=true;
+            this.ws.close();
+            this.ws=null;
+        }
+        if(this.reconnect_timer) clearInterval(this.reconnect_timer);
+        if(this.heartbeat_timer) clearInterval(this.heartbeat_timer);
+        if(this.bitrate_monitor) clearInterval(this.bitrate_monitor);
     }
 }
 </script>

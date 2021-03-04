@@ -264,14 +264,19 @@ export default {
                 setTimeout(() => this.routeTo('/panel/rooms'), 1000);
             }
         },
-        routeTo(base, data=''){
+        routeTo(path, params={}){
             this.$router.push({
-                path: base+data,
+                path,
+                params
             })
         }
     },
     created(){
         this.$root.panelMenuIndex=1;
+        if(!this.global_.getCookie('Authorization')){
+            this.global_.delCookie('Authorization');
+            this.routeTo('/login');
+        }
     }
 }
 </script>

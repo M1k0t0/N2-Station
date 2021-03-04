@@ -144,7 +144,7 @@
             width="100%"
             height="100%"
             style="opacity:0.7;border-radius:16px;"
-            @click="routeTo('/panel','/createRoom')"
+            @click="routeTo('/panel/createRoom')"
             >
             <v-icon x-large style="font-size:55px;">mdi-plus-circle-outline</v-icon>
             </v-btn>
@@ -193,8 +193,8 @@ export default {
             })
         },
         updateUserRoomList(){
-            if(this.$root.userRoomList.status==-10 || this.$root.userRoomList.status==-11){
-                console.log('redirecting');
+            if(!this.global_.getCookie('Authorization') || this.$root.userRoomList.status==-10 || this.$root.userRoomList.status==-11){
+                // console.log('redirecting');
                 this.error_msg="cookie错误";
                 this.global_.delCookie('Authorization');
                 this.routeTo('/login');
@@ -209,9 +209,10 @@ export default {
             this.global_.request.getRoomList(this);
             this.renderButton=true;
         },
-        routeTo(base, data=''){
+        routeTo(path, params={}){
             this.$router.push({
-                path: base+data,
+                path,
+                params
             })
         },
         randColor(id,num){

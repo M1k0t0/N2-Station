@@ -8,7 +8,7 @@
         v-for="tag in $root.tagList.open"
         :key="tag"
         link
-        @click="routeTo('/tag/',tag)"
+        @click="routeTo('/tag/'+tag)"
         >
         <v-list-item-content>
             <v-list-item-subtitle># {{ tag }}</v-list-item-subtitle>
@@ -21,7 +21,7 @@
         v-for="tag in $root.tagList.close"
         :key="tag"
         link
-        @click="routeTo('/tag/',tag)"
+        @click="routeTo('/tag/'+tag)"
         >
         <v-list-item-content>
             <v-list-item-subtitle># {{ tag }}</v-list-item-subtitle>
@@ -38,9 +38,10 @@ export default {
         timerID: null
     }),
     methods: {
-        routeTo(base, data=''){
+        routeTo(path, params={}){
             this.$router.push({
-                path: base+data,
+                path,
+                params
             })
         }
     },
@@ -53,6 +54,9 @@ export default {
     beforeDestroy(){
         clearInterval(this.timerID);
     },
+    destroy() {
+        clearInterval(this.timerID);
+    }
 }
 </script>
 

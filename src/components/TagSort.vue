@@ -8,7 +8,7 @@
             :key="room.id"
             link
             v-if="room.tag.indexOf($route.params.tag)!=-1"
-            @click="$root.sfmode?routeTo('/live/',room['stream_id']):routeTo('/live/',room['id'])"
+            @click="$root.sfmode?routeTo('/live/'+room['stream_id']):routeTo('/live/'+room['id'])"
             >
 
             <v-list-item-avatar color="grey darken-1">
@@ -47,9 +47,10 @@
 <script>
 export default {
     methods: {
-        routeTo(base, data=''){
+        routeTo(path, params={}){
             this.$router.push({
-                path: base+data,
+                path,
+                params
             })
         }
     },

@@ -44,7 +44,7 @@
                     <v-badge 
                     bordered
                     overlap
-                    v-for="item in sortedRoomList"
+                    v-for="item of sortedRoomList"
                     :key="item.title"
                     class="text-center ml-6 mr-3"
                     :color="item.status=='open'?'red':'grey'" 
@@ -62,7 +62,7 @@
                                     v-bind="attrs"
                                     v-on="on"
                                     icon 
-                                    @click="routeTo('/live/'+$root.sfmode?item.stream_id:item.id)"
+                                    @click="routeTo('/live/'+($root.sfmode?item.stream_id:item.id))"
                                     style="margin-top:1px;">
                                         <!-- <img
                                             src=""
@@ -226,6 +226,7 @@ export default {
                 this.routeTo('/live/'+this.player.id)
         },
         routeTo(path, params={}){
+            console.log(path)
             this.$router.push({
                 path,
                 params

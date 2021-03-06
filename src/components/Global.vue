@@ -1,6 +1,6 @@
 <script>
 import axios from 'axios';
-axios.defaults.withCredentials = true;
+// axios.defaults.withCredentials = true;
 
 const BackendAddress="https://live.4g.cx/backend";  // http unsafe
 const debugBackendAddress="https://n2station.live:8443";
@@ -68,7 +68,7 @@ const delCookie=function(cname){
 const request={
     getRoomList: function(that){
         axios
-        .get(that.$root.backend+'/api/info/room',{withCredentials:true})
+        .get(that.$root.backend+'/api/info/room')
         .then(response => {
             that.$set(that.$root,'roomList',that.$root.sfmode ? response.data.rooms : response.data.data);
         })
@@ -78,7 +78,7 @@ const request={
     },
     asyncGetRoomList: async function(that){
         await axios
-        .get(that.$root.backend+'/api/info/room',{withCredentials:true})
+        .get(that.$root.backend+'/api/info/room')
         .then(response => {
             that.$set(that.$root,'roomList',that.$root.sfmode ? response.data.rooms : response.data.data);
         })

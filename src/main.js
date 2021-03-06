@@ -36,6 +36,7 @@ new Vue({
     closeRoom: {},
     deleteRoom: {},
     getLiveInfo: {},
+    destroyToken: {},
     panelMenuIndex: 0
   })
 }).$mount('#app')

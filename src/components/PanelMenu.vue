@@ -102,7 +102,9 @@
                 class="body-2"
             >
                 <font color="#f04746">
-                    <b>{{ logout_confirm?"Confirm logout":"Logout" }}</b>
+                    <transition name="no-mode-translate-fade" mode="out-in" :duration="200">
+                        <b :key="logout_confirm">{{ logout_confirm?"Confirm logout":"Logout" }}</b>
+                    </transition>
                 </font>
             </v-list-item-title>
         </v-list-item-content>
@@ -158,8 +160,10 @@ export default {
     }),
     methods: {
         logout(){
-            if(!this.logout_confirm) this.logout_confirm=true;
-            else{
+            if(!this.logout_confirm){
+                this.logout_confirm=true;
+                setTimeout(()=>{this.logout_confirm=false;},5000);
+            }else{
                 this.logout_loading=true;
                 this.global_.request.destroyToken(this).then(()=>{
                     this.routeTo("/login");
@@ -175,3 +179,6 @@ export default {
     }
 }
 </script>
+<style>
+    .no-mode-translate-fade-enter-active, .no-mode-translate-fade-leave-active { transition: all 1s; } .no-mode-translate-fade-enter, .no-mode-translate-fade-leave-active { opacity: 0; } .no-mode-translate-fade-enter { transform: translateX(31px); } .no-mode-translate-fade-leave-active { transform: translateX(-31px); }
+</style>

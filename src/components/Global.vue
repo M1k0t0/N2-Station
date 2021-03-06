@@ -148,6 +148,16 @@ const request={
         .catch(error => {
             console.log(error);
         })
+    },
+    destroyToken: async function(that){
+        await axios
+        .post(that.$root.backend+'/api/user/destroyToken')
+        .then(response => {
+            that.$root.destroyToken = response.data; // full data returned
+        })
+        .catch(error => {
+            console.log(error);
+        })
     }
 }
 export default{

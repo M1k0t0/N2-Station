@@ -151,7 +151,7 @@ const request={
     },
     destroyToken: async function(that){
         await axios
-        .post(that.$root.backend+'/api/user/destroyToken')
+        .post(that.$root.backend+'/api/auth/destroyToken')
         .then(response => {
             that.$root.destroyToken = response.data; // full data returned
         })

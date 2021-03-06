@@ -100,8 +100,6 @@
         <v-list-item-content class="pt-0 pb-0">
             <v-list-item-title 
                 class="body-2"
-                v-bind="attrs"
-                v-on="on"
             >
                 <font color="#f04746">
                     <b>{{ logout_confirm?"Confirm logout":"Logout" }}</b>

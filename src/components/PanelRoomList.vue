@@ -32,9 +32,24 @@
         </v-card>
         </v-dialog>
         <!-- <v-row justify="start" align="center" class="ma-0"> -->
+
         <transition-group name="flip-list" tag="div" class="row ma-0 align-center justify-start">
+        
         <v-col 
-        xs="3" md="4" sm="6" 
+            xl="3" md="4" sm="6" xs="12"
+            v-if="Object.keys($root.userRoomList).length==0"
+            key="skeleton-loader"
+        >
+            <v-skeleton-loader
+            height="350px"
+            type="article, actions"
+            class="d-flex flex-column pa-6"
+            style="justify-content: space-between;background-color:#1E1E1E;border-radius:16px;"
+            ></v-skeleton-loader>
+        </v-col>
+
+        <v-col 
+        xl="3" md="4" sm="6" xs="12"
         v-for="room of sortedRoomList"
         :key="room.id"
         >
@@ -192,7 +207,7 @@ export default {
                 this.confirmDialog=true;
             })
         },
-        updateUserRoomList(){
+        updateUserRoomList(){ 
             if(!this.global_.getCookie('Authorization') || this.$root.userRoomList.status==-10 || this.$root.userRoomList.status==-11){
                 // console.log('redirecting');
                 this.error_msg="cookie错误";
@@ -267,7 +282,7 @@ export default {
     },
     mounted() {
         this.requestUserRoomList();
-        // this.$set(this.$root,'userRoomList',{"action":"getUserRoomList","data":{"Test":{"_id":"Test","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f4","image":"default","status":"close","tag":["\u6d4b\u8bd5","Tag\u6d4b\u8bd5","\ud83d\ude00","wwwwwwwww","abababababababab"],"time":{"createTime":1612151938,"openTime":1613658131,"stopTime":1613664149},"title":"\u54fc \u54fc \u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a\u554a"},"Test2":{"_id":"Test2","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f42","image":"default","status":"close","tag":["Tag\u6d4b\u8bd52","Tag\u6d4b\u8bd5"],"time":{"createTime":1612287215,"openTime":1613721175,"stopTime":1613721186},"title":"\u6d4b\u8bd5\u623f\u95f42"}},"status":0});
+        // this.$set(this.$root,'userRoomList',{"action":"getUserRoomList","data":{"Test":{"_id":"Test","desc":"\u4e00\u4e2a\u7528\u6765\u6d4b\u8bd5\u7684\u623f\u95f4","image":"default","status":"close","tag":["\u6d4b\u8bd5","Tag\u6d4b\u8bd5"],"time":{"createTime":1612151938,"openTime":1613861978,"stopTime":1613868869},"title":"\u6d4b\u8bd5\u623f\u95f4"},"ckApex":{"_id":"ckApex","desc":"\u5173\u4e8e\u6211\u7684\u6556\u72ac\u4e00\u67aa13\u8fd9\u4ef6\u4e8b\uff0c\u4eba\u5de8\u83dc\u3002","image":"default","status":"close","tag":["Apex"],"time":{"createTime":1614068360,"openTime":1614074654,"stopTime":1614074662},"title":"\u4f17\u795e\u4e4b\u7236\u8d50\u4e88\u6211\u91cd\u4f24\u5012\u5730"},"ckLive":{"_id":"ckLive","desc":"ck\u7684\u76f4\u64ad\u95f4","image":"default","status":"close","tag":["\u9ed8\u8ba4"],"time":{"createTime":1613837608,"openTime":1614671368,"stopTime":1614672216},"title":"\u5168\u805a\u5fb7"}},"status":0});
         // this.updateUserRoomList(); // DEBUG
     },
     computed: {

@@ -66,7 +66,7 @@
                             <v-card tile id="chatBox" style="height:100%;" class="d-flex on-phone-chat-box-flex-reverse on-desktop-chat-box-flex" color="#36393f">
                                 <v-card 
                                     height="20%"
-                                    class="d-flex on-phone-chat-box-flex-reverse on-desktop-chat-box-flex px-5 pt-5" 
+                                    class="d-flex on-desktop-chat-box-info on-phone-chat-box-info on-phone-chat-box-flex-reverse on-desktop-chat-box-flex px-5" 
                                     color="#36393f"
                                 >
                                     <p class="body-2 mb-1" v-if="ws_state">
@@ -86,7 +86,7 @@
                                     flat 
                                     id="chatContent" 
                                     height="60%" 
-                                    class="d-flex on-phone-chat-box-flex-reverse on-desktop-chat-box-flex px-5 pb-5 pt-2" 
+                                    class="d-flex on-desktop-chat-box-padding on-phone-chat-box-padding on-phone-chat-box-flex-reverse on-desktop-chat-box-flex px-5" 
                                     color="#36393f"
                                     style="overflow-y: auto;flex: 1 1 1px;"
                                 >
@@ -296,7 +296,10 @@ export default {
             if(this.msg_list.length>=100) this.msg_list.splice(0,1);
             this.msg_list.push(msg);
             var ele = document.getElementById('chatContent');
-            ele.scrollTop = ele.scrollHeight;
+            if(window.screen.availWidth>600)
+                ele.scrollTop = ele.scrollHeight;
+            else
+                this.$nextTick(() => ele.scrollTop = -114514);
         }
     },
     created() {
@@ -392,6 +395,12 @@ export default {
     .on-phone-chat-box-textarea{
         padding-top: 6px;
     }
+    .on-phone-chat-box-padding{
+        margin-top: 8px;
+    }
+    .on-phone-chat-box-info{
+        margin-top: 6px;
+    }
 }
 @media screen and (min-width:960px){
     .on-desktop-card-padding-bottom{
@@ -399,6 +408,13 @@ export default {
     }
     .on-desktop-chat-box-flex{
         flex-direction:column;
+    }
+    .on-desktop-chat-box-padding{
+        padding-top: 8px;
+        margin-bottom: 6px;
+    }
+    .on-desktop-chat-box-info{
+        padding-top: 20px;
     }
 }
 </style>

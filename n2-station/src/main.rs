@@ -166,8 +166,8 @@ async fn initialize_database() -> Result<()> {
         `description` VARCHAR(20) NOT NULL,
         `tag` VARCHAR(1024) NULL,
         `open` BOOL NOT NULL,
-        `stream_token` CHAR(32) NULL，
-        `room_icon` MEDIUMBLOB(16777215) NOT NULL
+        `stream_token` CHAR(32) NULL,
+        `room_icon` MEDIUMBLOB NOT NULL
     )
     "#,
         )

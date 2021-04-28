@@ -70,26 +70,26 @@ pub mod response {
 
     #[crud_enable(table_name:"rooms"|id_name:"stream_id")]
     pub struct RawRoom {
-        owner_uuid: String,
-        stream_id: String,
-        title: String,
-        description: String,
-        tag: Option<String>,
-        open: i8,
-        stream_token: Option<String>,
-        room_icon: String,
+        pub(crate) owner_uuid: String,
+        pub(crate) stream_id: String,
+        pub(crate) title: String,
+        pub(crate) description: String,
+        pub(crate) tag: Option<String>,
+        pub(crate) open: i8,
+        pub(crate) stream_token: Option<String>,
+        pub(crate) room_icon: String,
     }
 
-    #[derive(serde::Serialize)]
+    #[derive(serde::Serialize, Clone, Default)]
     pub struct BakedRoom {
-        stream_id: String,
-        title: String,
-        desc: String,
-        tag: Vec<String>,
-        status: String,
-        user: BakedUser,
-        stream_token: Option<Uuid>,
-        room_icon: String,
+        pub(crate) stream_id: String,
+        pub(crate) title: String,
+        pub(crate) desc: String,
+        pub(crate) tag: Vec<String>,
+        pub(crate) status: String,
+        pub(crate) user: BakedUser,
+        pub(crate) stream_token: Option<Uuid>,
+        pub(crate) room_icon: String,
     }
 
     #[crud_enable(table_name:"users"|id_name:"uuid")]
@@ -100,7 +100,7 @@ pub mod response {
         pub(super) passwd: String,
     }
 
-    #[derive(serde::Serialize)]
+    #[derive(serde::Serialize, Clone, Default)]
     pub struct BakedUser {
         id: Uuid,
         name: String,
@@ -225,7 +225,11 @@ pub mod response {
 
 pub mod handler {
     use super::response::{BakedRoom, BakedUser, RawRoom, RawUser};
-    use crate::RBATIS;
+    use crate::{
+        backend::{incremental::IncrementalData, IncrementalServer},
+        RBATIS,
+    };
+    use actix::Addr;
     use anyhow::Result;
     use bcrypt::{hash, verify};
     use futures::{stream, StreamExt};
@@ -329,6 +333,7 @@ pub mod handler {
         desc: &str,
         tag: &str,
         icon: &str,
+        svr: &Addr<IncrementalServer>,
     ) -> Result<()> {
         let tag = if tag.is_empty() {
             None
@@ -340,21 +345,30 @@ pub mod handler {
                 None
             }
         };
-        RBATIS
-            .save(
-                "",
-                &RawRoom::new(creator, stream_id, title, desc, tag, icon),
-            )
-            .await?;
+        let raw = RawRoom::new(creator, stream_id, title, desc, tag, icon);
+        RBATIS.save("", &raw).await?;
+        let _ = svr.do_send(IncrementalData {
+            data: raw.bake(false).await.unwrap(),
+        });
         Ok(())
     }
 
-    pub async fn delete_room(stream_id: &str, owner_uuid: &str) -> Result<u64> {
+    pub async fn delete_room(
+        stream_id: &str,
+        owner_uuid: &str,
+        svr: &Addr<IncrementalServer>,
+    ) -> Result<u64> {
         let wrapper = RBATIS
             .new_wrapper()
             .eq("stream_id", stream_id)
             .and()
             .eq("owner_uuid", owner_uuid);
+        let _ = svr.do_send(IncrementalData {
+            data: BakedRoom {
+                stream_id: stream_id.to_owned(),
+                ..Default::default()
+            },
+        });
         Ok(RBATIS.remove_by_wrapper::<RawRoom>("", &wrapper).await?)
     }
 
@@ -384,7 +398,24 @@ pub mod handler {
             > 0
     }
 
-    pub async fn set_room_status(stream_id: &str, open: bool, owner_uuid: &str) -> Result<u64> {
+    pub async fn set_room_status(
+        stream_id: &str,
+        open: bool,
+        owner_uuid: &str,
+        svr: &Addr<IncrementalServer>,
+    ) -> Result<u64> {
+        let wrapper = RBATIS.new_wrapper().eq("stream_id", stream_id);
+        let raw = RBATIS
+            .fetch_by_wrapper::<RawRoom>("", &wrapper)
+            .await
+            .unwrap();
+        let raw = RawRoom {
+            open: if open { 1 } else { 0 },
+            ..raw
+        };
+        let _ = svr.do_send(IncrementalData {
+            data: raw.bake(false).await.unwrap(),
+        });
         Ok(RBATIS
             .exec_prepare(
                 "",

@@ -86,7 +86,7 @@ mod api {
         use crate::{
             backend::{
                 danmaku::{CloseRoom, OpenRoom},
-                form, handler, Action, ChatServer,
+                form, handler, Action, ChatServer, IncrementalServer,
             },
             ServerConfig,
         };
@@ -124,6 +124,7 @@ mod api {
             config: web::Data<ServerConfig>,
             id: Identity,
             room: web::Form<form::RoomCreation>,
+            svr: web::Data<Addr<IncrementalServer>>,
         ) -> HttpResponse {
             if let Some(uuid) = id.identity() {
                 if handler::raw_rooms_for_user(&uuid).await.unwrap() > config.room_creation_limit {
@@ -145,6 +146,7 @@ mod api {
                             &room.desc,
                             &room.tag,
                             &room.icon,
+                            svr.get_ref(),
                         )
                         .await
                         {
@@ -160,12 +162,17 @@ mod api {
         }
 
         #[post("/deleteRoom")]
-        async fn delete_room(id: Identity, room: web::Form<form::RoomId>) -> HttpResponse {
+        async fn delete_room(
+            id: Identity,
+            room: web::Form<form::RoomId>,
+            svr: web::Data<Addr<IncrementalServer>>,
+        ) -> HttpResponse {
             if let Some(uuid) = id.identity() {
                 if room.id.is_empty() {
                     HttpResponse::Ok().json(Action::DeleteRoom { status: -10 })
                 } else {
-                    if let Ok(affected) = handler::delete_room(&room.id, &uuid).await {
+                    if let Ok(affected) = handler::delete_room(&room.id, &uuid, svr.get_ref()).await
+                    {
                         if affected > 0 {
                             HttpResponse::Ok().json(Action::DeleteRoom { status: 0 })
                         } else {
@@ -186,6 +193,7 @@ mod api {
             id: Identity,
             room: web::Form<form::RoomId>,
             chat_svr: web::Data<Addr<ChatServer>>,
+            inc_svr: web::Data<Addr<IncrementalServer>>,
         ) -> HttpResponse {
             if let Some(uuid) = id.identity() {
                 if handler::raw_open_rooms().await.unwrap() > config.room_open_limit {
@@ -199,7 +207,9 @@ mod api {
                         status: -10,
                     })
                 } else {
-                    if let Ok(affected) = handler::set_room_status(&room.id, true, &uuid).await {
+                    if let Ok(affected) =
+                        handler::set_room_status(&room.id, true, &uuid, inc_svr.get_ref()).await
+                    {
                         if affected > 0 {
                             chat_svr.get_ref().do_send(OpenRoom {
                                 room: room.id.clone(),
@@ -229,12 +239,15 @@ mod api {
             id: Identity,
             room: web::Form<form::RoomId>,
             chat_svr: web::Data<Addr<ChatServer>>,
+            inc_svr: web::Data<Addr<IncrementalServer>>,
         ) -> HttpResponse {
             if let Some(uuid) = id.identity() {
                 if room.id.is_empty() {
                     HttpResponse::Ok().json(Action::CloseRoom { status: -10 })
                 } else {
-                    if let Ok(affected) = handler::set_room_status(&room.id, false, &uuid).await {
+                    if let Ok(affected) =
+                        handler::set_room_status(&room.id, false, &uuid, inc_svr.get_ref()).await
+                    {
                         if affected > 0 {
                             chat_svr.get_ref().do_send(CloseRoom {
                                 room: room.id.clone(),
@@ -455,6 +468,23 @@ pub mod chat {
         } else {
             Ok(HttpResponse::InternalServerError().finish())
         }
+    }
+}
+
+pub mod subscribe {
+    use actix::Addr;
+    use actix_web::{get, web, Error, HttpRequest, HttpResponse};
+    use actix_web_actors::ws;
+
+    use crate::backend::{incremental::IncrementalSession, IncrementalServer};
+
+    #[get("/subscribe")]
+    async fn upgrade_ws(
+        req: HttpRequest,
+        stream: web::Payload,
+        svr: web::Data<Addr<IncrementalServer>>,
+    ) -> Result<HttpResponse, Error> {
+        ws::start(IncrementalSession::new(svr.get_ref().clone()), &req, stream)
     }
 }
 

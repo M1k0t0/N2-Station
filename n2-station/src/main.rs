@@ -68,6 +68,7 @@ async fn main() -> Result<()> {
     let address = config.bind_address.clone();
 
     let danmaku = backend::ChatServer::new().start();
+    let incremental = backend::IncrementalServer::new().start();
     if let Some(ref ssl_setting) = config.https {
         let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
         builder
@@ -100,6 +101,7 @@ async fn main() -> Result<()> {
                 ))
                 .data(config.clone())
                 .data(danmaku.clone())
+                .data(incremental.clone())
                 .configure(backend::init)
         })
         .bind_openssl((address, port), builder)?
@@ -130,6 +132,7 @@ async fn main() -> Result<()> {
                 ))
                 .data(config.clone())
                 .data(danmaku.clone())
+                .data(incremental.clone())
                 .configure(backend::init)
         })
         .bind((address, port))?

@@ -2,33 +2,36 @@
 name = "n2-station"
 version = "0.1.4"
 authors = ["switefaster <switefaster@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = { version = "3.3.2", features = ["openssl"] }
+actix-web = { version = "4.0.1", features = ["openssl"] }
 # actix-web = { version = "4.0.0-beta.3", features = ["openssl"] }
-rbatis = { version = "1.8.84", default-features = false, features = ["tokio02", "mysql"] }
-argh = "0.1.4"
-anyhow = "1.0.40"
-actix = "0.10.0"
+rbatis = { version = "3.0.31", default-features = false, features = [
+    "runtime-actix-native-tls",
+    "mysql",
+] }
+argh = "0.1.7"
+anyhow = "1.0.55"
+actix = "0.12.0"
 # actix-files = "0.3"
 actix-identity = "0.3.1"
 # actix-multipart = "0.3"
-actix-web-actors = "3.0.0"
+actix-web-actors = "4.0.0"
 # actix-form-data = "0.5"
-serde = { version = "1.0.125", features = ["derive"] }
+serde = { version = "1.0.136", features = ["derive"] }
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
-futures = "0.3.14"
-serde_json = "1.0.64"
-bcrypt = "0.9.0"
+futures = "0.3.19"
+serde_json = "1.0.73"
+bcrypt = "0.11.0"
 log = "0.4.14"
-env_logger = "0.8.3"
-fancy-regex = "0.5.0"
+env_logger = "0.9.0"
+fancy-regex = "0.8.0"
 lazy_static = "1.4.0"
-rand = "0.8.3"
-openssl = { version = "0.10.33", features = ["v110"] }
+rand = "0.8.4"
+openssl = { version = "0.10.38", features = ["v110"] }
 # cookie = "0.14"
 
 [profile.release]

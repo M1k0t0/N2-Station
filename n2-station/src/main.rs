@@ -13,6 +13,7 @@ mod backend;
 
 use backend::RBATIS;
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+use rbatis::executor::Executor;
 
 #[derive(FromArgs)]
 #[argh(description = "N2Station Backend Startup Parameter")]
@@ -59,7 +60,7 @@ async fn main() -> Result<()> {
         let reader = std::io::BufReader::new(file);
         serde_json::from_reader(reader)
     })
-    .await?;
+    .await??;
 
     RBATIS.link(&config.database_url).await?;
     initialize_database().await?;
@@ -81,17 +82,17 @@ async fn main() -> Result<()> {
             App::new()
                 .wrap(Condition::new(
                     config.allow_origin.is_some(),
-                    DefaultHeaders::new().header(
+                    DefaultHeaders::new().add((
                         ACCESS_CONTROL_ALLOW_ORIGIN,
                         config.allow_origin.clone().unwrap_or_default(),
-                    ),
+                    )),
                 ))
                 .wrap(Condition::new(
                     config.allow_credentials.is_some(),
-                    DefaultHeaders::new().header(
+                    DefaultHeaders::new().add((
                         ACCESS_CONTROL_ALLOW_CREDENTIALS,
                         config.allow_credentials.unwrap_or_default().to_string(),
-                    ),
+                    )),
                 ))
                 .wrap(Logger::default())
                 .wrap(IdentityService::new(
@@ -99,9 +100,9 @@ async fn main() -> Result<()> {
                         .name("Authorization")
                         .secure(config.authorization_force_https),
                 ))
-                .data(config.clone())
-                .data(danmaku.clone())
-                .data(incremental.clone())
+                .app_data(config.clone())
+                .app_data(danmaku.clone())
+                .app_data(incremental.clone())
                 .configure(backend::init)
         })
         .bind_openssl((address, port), builder)?
@@ -112,17 +113,17 @@ async fn main() -> Result<()> {
             App::new()
                 .wrap(Condition::new(
                     config.allow_origin.is_some(),
-                    DefaultHeaders::new().header(
+                    DefaultHeaders::new().add((
                         ACCESS_CONTROL_ALLOW_ORIGIN,
                         config.allow_origin.clone().unwrap_or_default(),
-                    ),
+                    )),
                 ))
                 .wrap(Condition::new(
                     config.allow_credentials.is_some(),
-                    DefaultHeaders::new().header(
+                    DefaultHeaders::new().add((
                         ACCESS_CONTROL_ALLOW_CREDENTIALS,
                         config.allow_credentials.unwrap_or_default().to_string(),
-                    ),
+                    )),
                 ))
                 .wrap(Logger::default())
                 .wrap(IdentityService::new(
@@ -130,9 +131,9 @@ async fn main() -> Result<()> {
                         .name("Authorization")
                         .secure(config.authorization_force_https),
                 ))
-                .data(config.clone())
-                .data(danmaku.clone())
-                .data(incremental.clone())
+                .app_data(config.clone())
+                .app_data(danmaku.clone())
+                .app_data(incremental.clone())
                 .configure(backend::init)
         })
         .bind((address, port))?
@@ -146,7 +147,6 @@ async fn main() -> Result<()> {
 async fn initialize_database() -> Result<()> {
     RBATIS
         .exec(
-            "",
             r#"
     CREATE TABLE IF NOT EXISTS `users`(
         `uuid` CHAR(32) NOT NULL,
@@ -155,12 +155,12 @@ async fn initialize_database() -> Result<()> {
         `passwd` CHAR(60) NOT NULL
     )
     "#,
+            vec![],
         )
         .await?;
 
     RBATIS
         .exec(
-            "",
             r#"
     CREATE TABLE IF NOT EXISTS `rooms`(
         `owner_uuid` CHAR(32) NOT NULL,
@@ -173,15 +173,16 @@ async fn initialize_database() -> Result<()> {
         `room_icon` MEDIUMBLOB NOT NULL
     )
     "#,
+            vec![],
         )
         .await?;
 
     RBATIS
         .exec(
-            "",
             r#"
         UPDATE rooms SET open=FALSE
         "#,
+            vec![],
         )
         .await?;
 

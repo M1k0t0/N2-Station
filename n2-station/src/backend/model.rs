@@ -63,12 +63,12 @@ pub mod form {
 
 pub mod response {
     use anyhow::Result;
-    use rbatis::{crud::CRUD, crud_enable};
+    use rbatis::{crud::CRUD, crud_table};
     use uuid::Uuid;
 
     use crate::RBATIS;
 
-    #[crud_enable(table_name:"rooms"|id_name:"stream_id")]
+    #[crud_table(table_name:"rooms"|id_name:"stream_id")]
     pub struct RawRoom {
         pub(crate) owner_uuid: String,
         pub(crate) stream_id: String,
@@ -92,7 +92,7 @@ pub mod response {
         pub(crate) room_icon: String,
     }
 
-    #[crud_enable(table_name:"users"|id_name:"uuid")]
+    #[crud_table(table_name:"users"|id_name:"uuid")]
     pub struct RawUser {
         pub(super) uuid: String,
         username: String,
@@ -158,7 +158,7 @@ pub mod response {
                 .collect();
             let status = if self.is_open() { "open" } else { "close" };
             let wrapper = RBATIS.new_wrapper().eq("uuid", &self.owner_uuid);
-            let raw: RawUser = RBATIS.fetch_by_wrapper("", &wrapper).await?;
+            let raw: RawUser = RBATIS.fetch_by_wrapper(wrapper).await?;
             let stream_token = if detail && self.is_open() {
                 if let Some(ref uuid) = self.stream_token {
                     Some(Uuid::parse_str(uuid.as_str()).unwrap())
@@ -233,12 +233,11 @@ pub mod handler {
     use anyhow::Result;
     use bcrypt::{hash, verify};
     use futures::{stream, StreamExt};
-    use rbatis::crud::CRUD;
-    use serde_json::json;
+    use rbatis::{crud::CRUD, executor::Executor};
     use uuid::Uuid;
 
     pub async fn get_all_rooms() -> Result<Vec<BakedRoom>> {
-        Ok(stream::iter(RBATIS.fetch_list::<RawRoom>("").await?)
+        Ok(stream::iter(RBATIS.fetch_list::<RawRoom>().await?)
             .then(|raw| async move { raw.bake(false).await.unwrap() })
             .collect()
             .await)
@@ -246,27 +245,24 @@ pub mod handler {
 
     pub async fn search_rooms_by_owner(owner: &str) -> Result<Vec<BakedRoom>> {
         let wrapper = RBATIS.new_wrapper().eq("owner_uuid", owner);
-        Ok(stream::iter(
-            RBATIS
-                .fetch_list_by_wrapper::<RawRoom>("", &wrapper)
-                .await?,
+        Ok(
+            stream::iter(RBATIS.fetch_list_by_wrapper::<RawRoom>(wrapper).await?)
+                .then(|raw| async move { raw.bake(false).await.unwrap() })
+                .collect()
+                .await,
         )
-        .then(|raw| async move { raw.bake(false).await.unwrap() })
-        .collect()
-        .await)
     }
 
     pub async fn raw_room_by_stream_name(stream_name: &str) -> Result<Option<RawRoom>> {
         let wrapper = RBATIS.new_wrapper().eq("stream_id", stream_name);
-        Ok(RBATIS.fetch_by_wrapper("", &wrapper).await?)
+        Ok(RBATIS.fetch_by_wrapper(wrapper).await?)
     }
 
     pub async fn raw_rooms_for_user(user: &str) -> Result<u64> {
         Ok(RBATIS
-            .exec_prepare(
-                "",
+            .exec(
                 r#"SELECT * FROM rooms WHERE owner_uuid = ?"#,
-                &vec![json!(user)],
+                vec![rbson::bson!(user)],
             )
             .await?
             .rows_affected)
@@ -274,7 +270,7 @@ pub mod handler {
 
     pub async fn raw_open_rooms() -> Result<u64> {
         Ok(RBATIS
-            .exec("", "SELECT * FROM rooms WHERE open = TRUE")
+            .exec("SELECT * FROM rooms WHERE open = TRUE", vec![])
             .await?
             .rows_affected)
     }
@@ -298,7 +294,7 @@ pub mod handler {
 
     pub async fn get_all_users() -> Result<Vec<BakedUser>> {
         Ok(RBATIS
-            .fetch_list("")
+            .fetch_list()
             .await?
             .iter()
             .map(RawUser::bake)
@@ -308,7 +304,7 @@ pub mod handler {
     pub async fn search_user_by_uuid(uuid: Uuid) -> Result<Option<BakedUser>> {
         let uuid = uuid.to_simple().to_string();
         let wrapper = RBATIS.new_wrapper().eq("uuid", uuid);
-        let query: Option<RawUser> = RBATIS.fetch_by_wrapper("", &wrapper).await?;
+        let query: Option<RawUser> = RBATIS.fetch_by_wrapper(wrapper).await?;
         if let Some(user) = query {
             Ok(Some(user.bake()))
         } else {
@@ -318,7 +314,7 @@ pub mod handler {
 
     pub async fn search_user_by_name(name: &str) -> Result<Option<BakedUser>> {
         let wrapper = RBATIS.new_wrapper().eq("username", name);
-        let query: Option<RawUser> = RBATIS.fetch_by_wrapper("", &wrapper).await?;
+        let query: Option<RawUser> = RBATIS.fetch_by_wrapper(wrapper).await?;
         if let Some(user) = query {
             Ok(Some(user.bake()))
         } else {
@@ -346,7 +342,7 @@ pub mod handler {
             }
         };
         let raw = RawRoom::new(creator, stream_id, title, desc, tag, icon);
-        RBATIS.save("", &raw).await?;
+        RBATIS.save(&raw, &[]).await?;
         let _ = svr.do_send(IncrementalData {
             data: raw.bake(false).await.unwrap(),
         });
@@ -369,15 +365,14 @@ pub mod handler {
                 ..Default::default()
             },
         });
-        Ok(RBATIS.remove_by_wrapper::<RawRoom>("", &wrapper).await?)
+        Ok(RBATIS.remove_by_wrapper::<RawRoom>(wrapper).await?)
     }
 
     pub async fn exists_room(stream_id: &str) -> bool {
         RBATIS
-            .exec_prepare(
-                "",
+            .exec(
                 "SELECT * FROM rooms WHERE stream_id = ?",
-                &vec![json!(stream_id)],
+                vec![rbson::bson!(stream_id)],
             )
             .await
             .unwrap()
@@ -387,10 +382,9 @@ pub mod handler {
 
     pub async fn exists_user(username: &str, email: &str) -> bool {
         RBATIS
-            .exec_prepare(
-                "",
+            .exec(
                 "SELECT * FROM users WHERE username = ? OR email = ?",
-                &vec![json!(username), json!(email)],
+                vec![rbson::bson!(username), rbson::bson!(email)],
             )
             .await
             .unwrap()
@@ -405,10 +399,7 @@ pub mod handler {
         svr: &Addr<IncrementalServer>,
     ) -> Result<u64> {
         let wrapper = RBATIS.new_wrapper().eq("stream_id", stream_id);
-        let raw = RBATIS
-            .fetch_by_wrapper::<RawRoom>("", &wrapper)
-            .await
-            .unwrap();
+        let raw = RBATIS.fetch_by_wrapper::<RawRoom>(wrapper).await.unwrap();
         let raw = RawRoom {
             open: if open { 1 } else { 0 },
             ..raw
@@ -417,10 +408,13 @@ pub mod handler {
             data: raw.bake(false).await.unwrap(),
         });
         Ok(RBATIS
-            .exec_prepare(
-                "",
+            .exec(
                 r#"UPDATE rooms SET open = ? WHERE stream_id = ? AND owner_uuid = ?"#,
-                &vec![json!(open), json!(stream_id), json!(owner_uuid)],
+                vec![
+                    rbson::bson!(open),
+                    rbson::bson!(stream_id),
+                    rbson::bson!(owner_uuid),
+                ],
             )
             .await?
             .rows_affected)
@@ -430,10 +424,9 @@ pub mod handler {
         let uuid = Uuid::new_v4();
         let uuid_str = uuid.to_simple().to_string();
         RBATIS
-            .exec_prepare(
-                "",
+            .exec(
                 r#"UPDATE rooms SET stream_token = ? WHERE stream_id = ?"#,
-                &vec![json!(uuid_str), json!(stream_id)],
+                vec![rbson::bson!(uuid_str), rbson::bson!(stream_id)],
             )
             .await?;
         Ok(uuid)
@@ -441,10 +434,9 @@ pub mod handler {
 
     pub async fn unset_stream_token(stream_id: &str) -> Result<()> {
         RBATIS
-            .exec_prepare(
-                "",
+            .exec(
                 r#"UPDATE rooms SET stream_token = NULL WHERE stream_id = ?"#,
-                &vec![json!(stream_id)],
+                vec![rbson::bson!(stream_id)],
             )
             .await?;
         Ok(())
@@ -455,14 +447,14 @@ pub mod handler {
         let uuid_str = uuid.to_simple().to_string();
         let pass = hash(pass, 4)?;
         RBATIS
-            .save("", &RawUser::new(&uuid_str, name, email, &pass))
+            .save(&RawUser::new(&uuid_str, name, email, &pass), &[])
             .await?;
         Ok(uuid)
     }
 
     pub async fn check_password_email(email: &str, pass: &str) -> Result<Option<Uuid>> {
         let wrapper = RBATIS.new_wrapper().eq("email", email);
-        let raw: Option<RawUser> = RBATIS.fetch_by_wrapper("", &wrapper).await?;
+        let raw: Option<RawUser> = RBATIS.fetch_by_wrapper(wrapper).await?;
         if let Some(raw) = raw {
             if verify(pass, &raw.passwd)? {
                 Ok(Some(Uuid::parse_str(&raw.uuid)?))
@@ -477,7 +469,7 @@ pub mod handler {
     pub async fn check_password_uuid(uuid: &Uuid, pass: &str) -> Result<Option<Uuid>> {
         let uuid_str = uuid.to_simple_ref().to_string();
         let wrapper = RBATIS.new_wrapper().eq("uuid", uuid_str);
-        let raw: Option<RawUser> = RBATIS.fetch_by_wrapper("", &wrapper).await?;
+        let raw: Option<RawUser> = RBATIS.fetch_by_wrapper(wrapper).await?;
         if let Some(raw) = raw {
             if verify(pass, &raw.passwd)? {
                 Ok(Some(Uuid::parse_str(&raw.uuid)?))
@@ -491,12 +483,10 @@ pub mod handler {
 
     pub async fn update_password(uuid: &str, new: &str) -> Result<()> {
         let pass_str = hash(new, 4)?;
-        let pass = pass_str.as_bytes();
         RBATIS
-            .exec_prepare(
-                "",
+            .exec(
                 r#"UPDATE users SET passwd = ? WHERE uuid = ?"#,
-                &vec![json!(pass), json!(uuid)],
+                vec![rbson::bson!(pass_str), rbson::bson!(uuid)],
             )
             .await?;
         Ok(())

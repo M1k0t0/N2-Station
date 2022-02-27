@@ -13,11 +13,12 @@ rbatis = { version = "3.0.31", default-features = false, features = [
     "runtime-actix-native-tls",
     "mysql",
 ] }
+rbson = { version = "2.0.3" }
 argh = "0.1.7"
 anyhow = "1.0.55"
 actix = "0.12.0"
 # actix-files = "0.3"
-actix-identity = "0.3.1"
+actix-identity = "0.4.0-beta.9"
 # actix-multipart = "0.3"
 actix-web-actors = "4.0.0"
 # actix-form-data = "0.5"

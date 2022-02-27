@@ -315,6 +315,7 @@ __NOTE: ONLY `application/x-www-form-urlencoded` IS ACCEPTED FOR `POST` REQUEST_
 ```json5
 {
     "status": "<int>", // 0 for success, -1 if username or email occupied, -10 if parameter missing or invalid
+    "id": "<hyphenated-uuid>",
     "action": "register"
 }
 ```

@@ -137,7 +137,7 @@ impl Handler<IncrementalData> for IncrementalSession {
     type Result = ();
 
     fn handle(&mut self, msg: IncrementalData, ctx: &mut Self::Context) -> Self::Result {
-        ctx.text(&serde_json::to_string(&msg.data).unwrap());
+        ctx.text(serde_json::to_string(&msg.data).unwrap());
     }
 }
 

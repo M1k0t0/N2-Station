@@ -10,3 +10,4 @@ requests==2.21.0
 time_uuid==0.2.0
 Werkzeug==1.0.1
 pywebpush==1.14.0
+jinja2<3.1.0

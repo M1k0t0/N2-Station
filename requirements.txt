@@ -1,0 +1,12 @@
+Flask==1.1.2
+flask_cors==3.0.10
+flask_limiter==1.5
+flask_sockets==0.2.1
+gevent==21.12.0
+gevent_websocket==0.10.1
+pymongo==3.9
+bcrypt==3.2.0
+requests==2.21.0
+time_uuid==0.2.0
+Werkzeug==1.0.1
+pywebpush==1.14.0
